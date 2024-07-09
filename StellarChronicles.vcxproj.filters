@@ -16,11 +16,14 @@
     <Filter Include="头文件\box2d">
       <UniqueIdentifier>{73df133c-8b2c-4784-bcde-d3e3ec1f6486}</UniqueIdentifier>
     </Filter>
-    <Filter Include="源文件\StellarChronicls">
-      <UniqueIdentifier>{176405f4-4294-4c72-9fa4-709274b51aac}</UniqueIdentifier>
-    </Filter>
     <Filter Include="头文件\SDL2">
       <UniqueIdentifier>{6ada03e4-92e9-449f-91b8-a8dc597373cc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="头文件\stellarChronicles">
+      <UniqueIdentifier>{d6ccf2e6-ec08-493b-9a50-e0a2085a1171}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\StellarChronicles">
+      <UniqueIdentifier>{176405f4-4294-4c72-9fa4-709274b51aac}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -387,10 +390,34 @@
     <ClInclude Include="include\SDL2\SDL_vulkan.h">
       <Filter>头文件\SDL2</Filter>
     </ClInclude>
+    <ClInclude Include="include\StellarChronicles\sprites.h">
+      <Filter>头文件\stellarChronicles</Filter>
+    </ClInclude>
+    <ClInclude Include="include\StellarChronicles\manager.h">
+      <Filter>头文件\stellarChronicles</Filter>
+    </ClInclude>
+    <ClInclude Include="include\StellarChronicles\game.h">
+      <Filter>头文件\stellarChronicles</Filter>
+    </ClInclude>
+    <ClInclude Include="include\StellarChronicles\stella.h">
+      <Filter>头文件\stellarChronicles</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\StellarChronicles\main.cpp">
       <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StellarChronicles\sprites.cpp">
+      <Filter>源文件\StellarChronicles</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StellarChronicles\manager.cpp">
+      <Filter>源文件\StellarChronicles</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StellarChronicles\game.cpp">
+      <Filter>源文件\StellarChronicles</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StellarChronicles\stella.cpp">
+      <Filter>源文件\StellarChronicles</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

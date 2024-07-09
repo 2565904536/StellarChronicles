@@ -1,116 +1,179 @@
-#include<print>
-#include"SDL2/SDL.h"
-#include"SDL2/SDL_image.h"
-#include"SDL2/SDL_ttf.h"
-#include"box2d/box2d.h"
-
-int main(int argc, char* argv[])
+#include <print>
+#include "SDL2/SDL.h"
+#include "SDL2/SDL_image.h"
+#include "SDL2/SDL_ttf.h"
+#include "box2d/box2d.h"
+#include "StellarChronicles/game.h"
+#include "StellarChronicles/sprites.h"
+#include "StellarChronicles/manager.h"
+// #include "StellarChronicles/stella.h"
+const b2Vec2 b2Vec2_zero{0.0f, 0.0f};
+class gameInstance : public game
 {
-	//初始化视频系统和时间系统
-	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
-	//初始化图像加载器，允许加载png图像
-	IMG_Init(IMG_INIT_PNG);
-	//初始化字体
-	TTF_Init();
-
-	SDL_Window *window = SDL_CreateWindow("Hello world", 100, 100, 1280, 720, false);
-	//创建渲染器，开启硬件加速和垂直同步
-	SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-
-	std::println("hello world");
-
-	b2Vec2 gravity(0.0f, -10.0f);
-	//用重力初始化世界
-	b2World world(gravity);
-
-	//定义一个刚体
-	b2BodyDef groundBodyDef;
-	groundBodyDef.position.Set(0.0f, -9.0f);
-	//用刚体定义创建世界上的刚体
-	b2Body* groundBody = world.CreateBody(&groundBodyDef);
-	//设定多边形形状
-	b2PolygonShape groundBox;
-	//设定为矩形，传入半高和半宽
-	groundBox.SetAsBox(48.0f, 9.0f);
-	//设定密度，把形状作为夹具附在刚体上
-	//夹具是刚体（body）上的一个组件，它定义了刚体如何与周围环境进行交互。
-	// 具体来说，夹具包含了形状（shape）、密度（density）、
-	// 摩擦系数（friction）、恢复系数（restitution，也称为弹性系数）等物理属性。
-	groundBody->CreateFixture(&groundBox, 0.0f);
-
-	//定义一个刚体
-	b2BodyDef bodyDef;
-	//设定为动态刚体，其运动完全由物理引擎的求解器根据作用在刚体上的力和力矩来计算。
-	bodyDef.type = b2_dynamicBody;
-	bodyDef.position.Set(0.0f, 9.0f);
-	bodyDef.angle = 3.14 / 3.0;
-	//在世界中创建刚体
-	b2Body* body = world.CreateBody(&bodyDef);
-
-	b2PolygonShape dynamicBox;
-	dynamicBox.SetAsBox(1.0f, 1.0f);
-	//定义一个夹具
-	b2FixtureDef fixtureDef;
-	//设定夹具的形状
-	fixtureDef.shape = &dynamicBox;
-	fixtureDef.density = 1.0f;
-	//设定摩擦系数
-	fixtureDef.friction = 0.3f;
-	//设定弹性系数
-	fixtureDef.restitution = 0.9f;
-	body->CreateFixture(&fixtureDef);
-	//模拟时间步长
-	const float timeStep = 1.0f / 165.0f;
-
-	int32 velocityIterations = 6;
-	int32 positionIterations = 2;
-
-	const float pixsPerMeter = 1280 / 48.0f;
-
-	//读取一张图片，得到材质
-	//读取失败会返回空指针
-	SDL_Texture* block = IMG_LoadTexture(renderer, "box.png");
-	if (!block)
-		return -1;
-	SDL_Event event;
-	bool loop = true;
-	do
+public:
+	gameInstance(std::string_view name, int x, int y, int w, int h, Uint32 flags)
+		: game(name, x, y, w, h, flags), world(b2Vec2_zero) {}
+	void INIT()
 	{
-		while (SDL_PollEvent(&event))
+		texManager.LoadTex(renderer, "0001.png", "01");
+		asteroid = new sprites(texManager.GetTex("01"), {1, 1}, 1, {760, 540}, 0.0f, 1.0f, SDL_FLIP_NONE);
+		b2BodyDef bodydef;
+		bodydef.position = { -4.0f,0.0f };
+		bodydef.type = b2_dynamicBody;
+		asteroidBody = world.CreateBody(&bodydef);
+		b2CircleShape shape;
+		shape.m_radius = 1.0f;
+		b2FixtureDef fix;
+		fix.shape = &shape;
+		fix.density = 1.0f;
+		asteroidBody->CreateFixture(&fix);
+		shape.m_radius = 5.0f;
+		fix.shape = &shape;
+		fix.isSensor = true;
+		fix.density = 0.0f;
+		asteroidBody->CreateFixture(&fix);
+
+		asteroid2 = new sprites(texManager.GetTex("01"), {1, 1}, 1, {1160, 540}, 0.0f, 1.0f, SDL_FLIP_NONE);
+		bodydef.position = { 4.0f,0.0f };
+		bodydef.type = b2_dynamicBody;
+		asteroid2Body = world.CreateBody(&bodydef);
+		shape.m_radius = 1.0f;
+		fix.shape = &shape;
+		fix.density = 1.0f;
+		fix.isSensor = false;
+		asteroid2Body->CreateFixture(&fix);
+
+		b2Vec2 v[4] = {
+			{ 19.2f, -10.8f }, // 右上角  
+			{ -19.2f,  -10.8f }, // 左上角  
+			{-19.2f,  10.8f }, // 左下角  
+			{ 19.2f, 10.8f }  // 右下角  
+		};
+		b2ChainShape chain;
+		chain.CreateLoop(v, 4);
+		b2BodyDef chainDef;
+		chainDef.type = b2_staticBody;
+		chainDef.position = b2Vec2_zero;
+		
+		Edge = world.CreateBody(&chainDef);
+		b2FixtureDef edgeDef;
+		edgeDef.shape = &chain;
+		edgeDef.restitution = 0.9;
+		Edge->CreateFixture(&edgeDef);
+	}
+	bool debugBreak = false;
+	void LOOP()
+	{
+		loop = true;
+		while (SDL_PollEvent(&windowEvent))
 		{
-			switch (event.type)
+			switch (windowEvent.type)
 			{
 			case SDL_QUIT:
 				loop = false;
 				break;
 			case SDL_KEYDOWN:
-				switch (event.key.keysym.sym)
+				switch (windowEvent.key.keysym.sym)
 				{
 				case SDLK_ESCAPE:
 					loop = false;
+					break;
+				case SDLK_KP_0:
+					debugBreak = true;
 					break;
 				}
 				break;
 			}
 		}
-		//步进模拟物理计算，
-		// 传入步长、速度约束求解器的迭代次数和位置约束求解器的迭代次数。
-		world.Step(timeStep, velocityIterations, positionIterations);
-		//获取物块的位置和角度
-		b2Vec2 position = body->GetPosition();
-		float angle = body->GetAngle();
-		//清空屏幕
+
+		auto keyboardState = SDL_GetKeyboardState(NULL);
+		b2Vec2 force = b2Vec2_zero;
+		float Torque = 0.0f;
+		if (keyboardState[SDL_SCANCODE_A])
+			force += {-10.0f, 0.0f};
+		if (keyboardState[SDL_SCANCODE_S])
+			force += {0.0f, 10.0f};
+		if (keyboardState[SDL_SCANCODE_D])
+			force += {10.0f, 0.0f};
+		if (keyboardState[SDL_SCANCODE_W])
+			force += {0.0f, -10.0f};
+		if (keyboardState[SDL_SCANCODE_Q])
+			Torque += -1.0f;
+		if (keyboardState[SDL_SCANCODE_E])
+			Torque += 1.0f;
+
+		asteroidBody->ApplyForceToCenter(force, true);
+		asteroidBody->ApplyTorque(Torque, true);
+		// 步进模拟物理计算，
+		//  传入步长、速度约束求解器的迭代次数和位置约束求解器的迭代次数。
+		world.Step(1 / 60.0f, 10, 8);
+		// 清空屏幕
+		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);
-		//把物理世界的坐标转换成SDL渲染的坐标
-		SDL_FRect dstRect{ 640 - position.x * pixsPerMeter,360 - position.y * pixsPerMeter,2 * pixsPerMeter,2 * pixsPerMeter };
-		SDL_FPoint center{ pixsPerMeter,pixsPerMeter };
-		//画出材质
-		SDL_RenderCopyExF(renderer, block, nullptr, &dstRect, -angle*180/3.14, &center, SDL_FLIP_NONE);
-		//显示渲染内容
+		// 把物理世界的坐标转换成SDL渲染的坐标
+		// 获取物块的位置和角度
+		b2Vec2 position = asteroidBody->GetPosition();
+		float angle = asteroidBody->GetAngle();
+
+		asteroid->position = {static_cast<int>(position.x * 50) + 960, static_cast<int>(position.y * 50) + 540};
+		asteroid->angle = angle * 180 / 3.14;
+		asteroid->draw(renderer);
+				SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		SDL_Rect aabb = { asteroid->position.x - 50,asteroid->position.y - 50, 100, 100 };
+		SDL_RenderDrawRect(renderer, &aabb);
+		
+
+		position = asteroid2Body->GetPosition();
+		angle = asteroid2Body->GetAngle();
+
+		asteroid2->position = {static_cast<int>(position.x * 50) + 960, static_cast<int>(position.y * 50) + 540};
+		asteroid2->angle = angle * 180 / 3.14;
+
+		asteroid2->draw(renderer);
+
+		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
+		SDL_RenderDrawLine(renderer, 910, 0, 910, 1080);
+		// 显示渲染内容
 		SDL_RenderPresent(renderer);
-	} while (loop);
-	//回收资源
-	SDL_DestroyTexture(block);
+		// 按小键盘0中断程序
+		if (debugBreak)
+			debugBreak = false;
+	}
+	b2World world;
+	manager texManager;
+	sprites *asteroid;
+	b2Body *asteroidBody;
+	sprites *asteroid2;
+	b2Body *asteroid2Body;
+	b2Body* Edge;
+
+	bool loop = false;
+	~gameInstance()
+	{
+		delete asteroid;
+		delete asteroid2;
+	}
+};
+
+int main(int argc, char *argv[])
+{
+	// 初始化视频系统和时间系统
+	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER);
+	// 初始化图像加载器，允许加载png图像
+	IMG_Init(IMG_INIT_PNG);
+	// 初始化字体
+	TTF_Init();
+	gameInstance stellarChronicles("Hello Stellar Chroicles", 100, 100, 1920, 1080, 0);
+
+	std::println("hello world");
+	stellarChronicles.INIT();
+
+	do
+	{
+		stellarChronicles.LOOP();
+	} while (stellarChronicles.loop);
+	// 回收资源
 	TTF_Quit();
 	IMG_Quit();
 	SDL_Quit();
