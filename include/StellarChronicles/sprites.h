@@ -5,17 +5,16 @@ class sprites
 {
 private:
     Uint32 index;
-    SDL_Point center;
     SDL_Texture *texture;
     SDL_Point frameSize;
     Uint32 frameNum;
 
 public:
-    sprites(SDL_Texture *texture, SDL_Point frameSize, Uint32 frameNum, SDL_Point position, float angle, float scale, SDL_RendererFlip flip);
+    sprites(SDL_Texture *texture, SDL_Point frameSize, Uint32 frameNum, float angle, float scale, SDL_RendererFlip flip);
+    sprites() = default;
+    sprites(const sprites&) = default;
     ~sprites() = default;
 
-    // 精灵在窗口里的位置，相对于左上角
-    SDL_Point position;
     // 精灵的大小
     SDL_Point size;
     // 精灵的角度
@@ -25,7 +24,7 @@ public:
     // 精灵的翻转类型
     SDL_RendererFlip flip;
 
-    void draw(SDL_Renderer *renderer);
+    void draw(SDL_Renderer* renderer, SDL_Point position, float scale);
     void nextFrame();
 
 

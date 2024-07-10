@@ -6,8 +6,11 @@
 #include "StellarChronicles/game.h"
 #include "StellarChronicles/sprites.h"
 #include "StellarChronicles/manager.h"
-// #include "StellarChronicles/stella.h"
+#include "StellarChronicles/contactListener.h"
+#include "StellarChronicles/stella.h"
+
 const b2Vec2 b2Vec2_zero{0.0f, 0.0f};
+Uint64 frequency = SDL_GetPerformanceFrequency();
 class gameInstance : public game
 {
 public:
@@ -15,33 +18,16 @@ public:
 		: game(name, x, y, w, h, flags), world(b2Vec2_zero) {}
 	void INIT()
 	{
-		texManager.LoadTex(renderer, "0001.png", "01");
-		asteroid = new sprites(texManager.GetTex("01"), {1, 1}, 1, {760, 540}, 0.0f, 1.0f, SDL_FLIP_NONE);
-		b2BodyDef bodydef;
-		bodydef.position = { -4.0f,0.0f };
-		bodydef.type = b2_dynamicBody;
-		asteroidBody = world.CreateBody(&bodydef);
-		b2CircleShape shape;
-		shape.m_radius = 1.0f;
-		b2FixtureDef fix;
-		fix.shape = &shape;
-		fix.density = 1.0f;
-		asteroidBody->CreateFixture(&fix);
-		shape.m_radius = 5.0f;
-		fix.shape = &shape;
-		fix.isSensor = true;
-		fix.density = 0.0f;
-		asteroidBody->CreateFixture(&fix);
+		lastTime = SDL_GetPerformanceCounter();
 
-		asteroid2 = new sprites(texManager.GetTex("01"), {1, 1}, 1, {1160, 540}, 0.0f, 1.0f, SDL_FLIP_NONE);
-		bodydef.position = { 4.0f,0.0f };
-		bodydef.type = b2_dynamicBody;
-		asteroid2Body = world.CreateBody(&bodydef);
-		shape.m_radius = 1.0f;
-		fix.shape = &shape;
-		fix.density = 1.0f;
-		fix.isSensor = false;
-		asteroid2Body->CreateFixture(&fix);
+		texManager.LoadTex(renderer, "planet0.png", "01");
+		texManager.LoadTex(renderer, "planet1.png", "02");
+		sprites 小行星贴图1(texManager.GetTex("01"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		小行星1 = new asteroid(&world, 小行星贴图1, 1.0f, b2Vec2_zero, 1.0f);
+		sprites 小行星贴图2(texManager.GetTex("02"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		小行星2 = new asteroid(&world, 小行星贴图2, 1.0f, b2Vec2_zero, 1.0f);
+
+		gameCamera={ b2Vec2_zero,1.0f,0.0f };
 
 		b2Vec2 v[4] = {
 			{ 19.2f, -10.8f }, // 右上角  
@@ -62,9 +48,13 @@ public:
 		Edge->CreateFixture(&edgeDef);
 	}
 	bool debugBreak = false;
+	float theta = 0;
 	void LOOP()
 	{
 		loop = true;
+		float fps = frequency / static_cast<float>(SDL_GetPerformanceCounter() - lastTime);
+		lastTime = SDL_GetPerformanceCounter();
+
 		while (SDL_PollEvent(&windowEvent))
 		{
 			switch (windowEvent.type)
@@ -83,6 +73,16 @@ public:
 					break;
 				}
 				break;
+			case SDL_MOUSEWHEEL:
+				if (windowEvent.wheel.y > 0)
+				{
+					gameCamera.scale *= 1.1f;
+				}
+				else
+				{
+					gameCamera.scale /= 1.1f;
+				}
+				break;
 			}
 		}
 
@@ -90,69 +90,63 @@ public:
 		b2Vec2 force = b2Vec2_zero;
 		float Torque = 0.0f;
 		if (keyboardState[SDL_SCANCODE_A])
-			force += {-10.0f, 0.0f};
+			force += {-5.0f, 0.0f};
 		if (keyboardState[SDL_SCANCODE_S])
-			force += {0.0f, 10.0f};
+			force += {0.0f, 5.0f};
 		if (keyboardState[SDL_SCANCODE_D])
-			force += {10.0f, 0.0f};
+			force += {5.0f, 0.0f};
 		if (keyboardState[SDL_SCANCODE_W])
-			force += {0.0f, -10.0f};
+			force += {0.0f, -5.0f};
 		if (keyboardState[SDL_SCANCODE_Q])
 			Torque += -1.0f;
 		if (keyboardState[SDL_SCANCODE_E])
 			Torque += 1.0f;
 
-		asteroidBody->ApplyForceToCenter(force, true);
-		asteroidBody->ApplyTorque(Torque, true);
+		小行星1->body->ApplyForceToCenter(force, true);
+		小行星1->body->ApplyTorque(Torque, true);
+		小行星2->body->SetAngularVelocity(1.0f);
+		auto vec = [](float angle) -> b2Vec2
+		{
+			return b2Vec2{ SDL_cosf(angle),SDL_sinf(angle) };
+		};
+		//theta += M_PI / 180.0;
+		//asteroid2Body->SetTransform(asteroidBody->GetPosition() + 3.0f*vec(theta), 0);
 		// 步进模拟物理计算，
 		//  传入步长、速度约束求解器的迭代次数和位置约束求解器的迭代次数。
 		world.Step(1 / 60.0f, 10, 8);
 		// 清空屏幕
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);
-		// 把物理世界的坐标转换成SDL渲染的坐标
-		// 获取物块的位置和角度
-		b2Vec2 position = asteroidBody->GetPosition();
-		float angle = asteroidBody->GetAngle();
 
-		asteroid->position = {static_cast<int>(position.x * 50) + 960, static_cast<int>(position.y * 50) + 540};
-		asteroid->angle = angle * 180 / 3.14;
-		asteroid->draw(renderer);
-				SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_Rect aabb = { asteroid->position.x - 50,asteroid->position.y - 50, 100, 100 };
-		SDL_RenderDrawRect(renderer, &aabb);
-		
+		gameCamera.position = 小行星1->body->GetPosition();
 
-		position = asteroid2Body->GetPosition();
-		angle = asteroid2Body->GetAngle();
-
-		asteroid2->position = {static_cast<int>(position.x * 50) + 960, static_cast<int>(position.y * 50) + 540};
-		asteroid2->angle = angle * 180 / 3.14;
-
-		asteroid2->draw(renderer);
+		小行星1->draw(renderer, gameCamera);
+		小行星2->draw(renderer, gameCamera);
 
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
-		SDL_RenderDrawLine(renderer, 910, 0, 910, 1080);
+		SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
 		// 显示渲染内容
 		SDL_RenderPresent(renderer);
+		    std::print("\rfps:{:.4f}", fps);
 		// 按小键盘0中断程序
 		if (debugBreak)
 			debugBreak = false;
 	}
 	b2World world;
 	manager texManager;
-	sprites *asteroid;
-	b2Body *asteroidBody;
-	sprites *asteroid2;
-	b2Body *asteroid2Body;
+	camera gameCamera;
+	asteroid *小行星1;
+	asteroid *小行星2;
 	b2Body* Edge;
+
+	Uint64 lastTime;
 
 	bool loop = false;
 	~gameInstance()
 	{
-		delete asteroid;
-		delete asteroid2;
+		delete 小行星1;
+		delete 小行星2;
 	}
 };
 

@@ -1,22 +1,24 @@
 #include "StellarChronicles/sprites.h"
 
-sprites::sprites(SDL_Texture *texture, SDL_Point frameSize, Uint32 frameNum, SDL_Point position, float angle, float scale, SDL_RendererFlip flip)
-	: texture(texture), frameSize(frameSize), frameNum(frameNum), position(position), angle(angle), scale(scale), flip(flip), index(0)
+sprites::sprites(SDL_Texture *texture, SDL_Point frameSize, Uint32 frameNum,  float angle, float scale,SDL_RendererFlip flip)
+	: texture(texture), frameSize(frameSize), frameNum(frameNum), angle(angle), scale(scale), flip(flip), index(0)
 {
 	int Ox = 0;
 	int Oy = 0;
 	SDL_QueryTexture(texture, nullptr, nullptr, &Ox, &Oy);
 	size = {Ox / frameSize.x, Oy / frameSize.y};
-	center = {size.x / 2, size.y / 2};
+
 }
 
-void sprites::draw(SDL_Renderer *renderer)
+void sprites::draw(SDL_Renderer *renderer, SDL_Point position,float visScale)
 {
 	int x = index / frameSize.x;
 	int y = index % frameSize.y;
+	SDL_Point center = {size.x / 2, size.y / 2};
 	SDL_Rect srcArea{x * size.x, y * size.y, size.x, size.y};
-	SDL_Rect dstArea{position.x - center.x * scale, position.y - center.y * scale, size.x * scale, size.y * scale};
-	SDL_Point scaledCenter{ center.x * scale,center.y * scale };
+	auto totalScale = scale * visScale;
+	SDL_Rect dstArea{position.x - center.x * totalScale, position.y - center.y * totalScale, size.x * totalScale, size.y * totalScale };
+	SDL_Point scaledCenter{ center.x * totalScale,center.y *totalScale };
 	SDL_RenderCopyEx(renderer, texture, &srcArea, &dstArea, angle, &scaledCenter, flip);
 }
 

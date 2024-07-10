@@ -402,6 +402,12 @@
     <ClInclude Include="include\StellarChronicles\stella.h">
       <Filter>头文件\stellarChronicles</Filter>
     </ClInclude>
+    <ClInclude Include="include\StellarChronicles\contactListener.h">
+      <Filter>头文件\stellarChronicles</Filter>
+    </ClInclude>
+    <ClInclude Include="include\StellarChronicles\camera.h">
+      <Filter>头文件\stellarChronicles</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\StellarChronicles\main.cpp">
@@ -417,6 +423,15 @@
       <Filter>源文件\StellarChronicles</Filter>
     </ClCompile>
     <ClCompile Include="src\StellarChronicles\stella.cpp">
+      <Filter>源文件\StellarChronicles</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StellarChronicles\contactBegin.cpp">
+      <Filter>源文件\StellarChronicles</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StellarChronicles\contactEnd.cpp">
+      <Filter>源文件\StellarChronicles</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StellarChronicles\camera.cpp">
       <Filter>源文件\StellarChronicles</Filter>
     </ClCompile>
   </ItemGroup>
