@@ -1,7 +1,6 @@
 #include "StellarChronicles/stella.h"
-
 galaxy::stella::stella(b2World *world, const sprites &sprite, float radius, const b2Vec2 &position, float mass)
-	: world(world), sprite(sprite), belongsTo(nullptr)
+	: sprite(sprite), belongsTo(nullptr)
 {
 	b2BodyDef stellaDef;
 	stellaDef.type = b2_dynamicBody;
@@ -37,36 +36,40 @@ galaxy::galaxy(b2World* world, const sprites& sprite, float radius, const b2Vec2
 galaxy::~galaxy()
 {
 		destroy();
-
 }
 
 void galaxy::destroy()
 {
 	if (state == State::ALIVE)
 	{
-	//body销毁后，?触发endcontact,其他galaxy移除aroundGalaxies中的此galaxy
-	this->mainStella.world->DestroyBody(this->mainStella.body);
+	//body销毁后，触发endcontact,其他galaxy移除aroundGalaxies中的此galaxy
+	//所有连接body的关节也会被销毁
+	this->mainStella.body->GetWorld()->DestroyBody(this->mainStella.body);
 	if (this->belongsTo)
 	{
 		std::erase(this->belongsTo->satellites, this);
+		this->belongsTo = nullptr;
 	}
 	//解放卫星系，让他们独立
 	for (auto& g : satellites)
 	{
 		g->belongsTo = nullptr;
 	}
+	//清空卫星系
+	satellites.clear();
 	state = State::DESTROYED;
+	visible = false;
 	}
 }
 
 //让星系整体受力
-void galaxy::applyOverAllForce(b2Vec2 Force)
+void galaxy::applyAcceleration(b2Vec2 acceleration)
 {
 	auto& body = this->mainStella.body;
-	body->ApplyForce(Force, body->GetPosition(), true);
+	body->ApplyForce(body->GetMass() * acceleration, body->GetPosition(), true);
 	for (auto& s : satellites)
 	{
-		s->applyOverAllForce(Force);
+		s->applyAcceleration(acceleration);
 	}
 }
 
@@ -114,10 +117,30 @@ b2Vec2 galaxy::computeForce()
 	return force;
 }
 
-void galaxy::addSubGalaxy(galaxy* subGalaxy)
+bool galaxy::addSubGalaxy(galaxy* subGalaxy)
 {
+	//1. 防止包含子星系
+	//2. 防止重复包含
+	if (subGalaxy->belongsTo)
+		return false;
+
 	satellites.push_back(subGalaxy);
 	subGalaxy->belongsTo = this;
-	//todo：需要更新attributes
+	//连接主星和卫星系
+	b2DistanceJointDef jd;
+	jd.Initialize(this->mainStella.body, subGalaxy->mainStella.body,
+		this->mainStella.body->GetPosition(), subGalaxy->mainStella.body->GetPosition());
+	subGalaxy->OrbitalLinkage = this->mainStella.body->GetWorld()->CreateJoint(&jd);
+	return true;
+}
 
+bool galaxy::removeSubGalaxy(galaxy* subGalaxy)
+{
+	if (!subGalaxy||!subGalaxy->OrbitalLinkage)
+		return false;
+	subGalaxy->mainStella.body->GetWorld()->DestroyJoint(subGalaxy->OrbitalLinkage);
+	subGalaxy->OrbitalLinkage = nullptr;
+	std::erase(subGalaxy->belongsTo->satellites, subGalaxy);
+	subGalaxy->belongsTo = nullptr;
+	return true;
 }

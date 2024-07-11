@@ -16,7 +16,6 @@ public:
 		~stella();
 		sprites sprite;
 		b2Body* body;
-		b2World* world;
 		galaxy* belongsTo;
 	};
 
@@ -26,26 +25,29 @@ public:
 	stella mainStella;
 	//Œ¿–«–«œµ
 	std::vector<galaxy*> satellites;
-	//Œ¿–«–«œµµƒ Ù–‘
-	std::vector<b2Vec2> attributes;
 
-	galaxy* belongsTo;
+	//std::vector<b2Vec3> attributes;
+
+	galaxy* belongsTo = nullptr;
 
 	std::vector<galaxy*> aroundGalaxies;
 
 	b2Vec2 computeForce();
-	void addSubGalaxy(galaxy* subGalaxy);
+	bool addSubGalaxy(galaxy* subGalaxy);
+	bool removeSubGalaxy(galaxy* subGalaxy);
 	void destroy();
-	void applyOverAllForce(b2Vec2 Force);
+	void applyAcceleration(b2Vec2 acceleration);
 	void applyForce(b2Vec2 Force);
 	void draw(SDL_Renderer *renderer, camera &camera);
-	bool visible;
+	bool visible = true;
+	b2Joint* OrbitalLinkage = nullptr;
 private:
 	enum class State
 	{
 		ALIVE,
 		DESTROYED
 	} state;
+	int level = 0;
 };
 
 

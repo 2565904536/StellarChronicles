@@ -22,34 +22,23 @@ public:
 
 		texManager.LoadTex(renderer, "planet0.png", "01");
 		texManager.LoadTex(renderer, "planet1.png", "02");
+		texManager.LoadTex(renderer, "0001.png", "03");
 		sprites ÐÐÐÇÌùÍ¼1(texManager.GetTex("01"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
 		sprites ÐÐÐÇÌùÍ¼2(texManager.GetTex("02"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		ÐÐÐÇ = new galaxy(&world, ÐÐÐÇÌùÍ¼1, 1.0f, b2Vec2_zero, 1.0f);
-		ÎÀÐÇ = new galaxy(&world, ÐÐÐÇÌùÍ¼2, 1.0f, b2Vec2{3.0f,0.0f}, 1.0f);
+		sprites Ì«ÑôÌùÍ¼(texManager.GetTex("03"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		ÐÐÐÇ = new galaxy(&world, ÐÐÐÇÌùÍ¼1, 0.5f, b2Vec2_zero, 1.0f);
+		ÎÀÐÇ = new galaxy(&world, ÐÐÐÇÌùÍ¼2, 0.1f, b2Vec2{1.0f,0.0f}, 0.3f);
+		Ì«Ñô = new galaxy(&world, Ì«ÑôÌùÍ¼, 1.0f, b2Vec2{ -3.0f,0.0f }, 5.0f);
+
 		ÐÐÐÇ->addSubGalaxy(ÎÀÐÇ);
+		Ì«Ñô->addSubGalaxy(ÐÐÐÇ);
+		ÎÀÐÇ->mainStella.body->SetLinearVelocity({ 0.0f,1.0f });
+		ÐÐÐÇ->mainStella.body->SetLinearVelocity({ 0.0f,3.0f });
 		gameCamera={ b2Vec2_zero,1.0f,0.0f };
 		world.SetContactListener(&contact);
-
-		//b2Vec2 v[4] = {
-		//	{ 19.2f, -10.8f }, // ÓÒÉÏ½Ç  
-		//	{ -19.2f,  -10.8f }, // ×óÉÏ½Ç  
-		//	{-19.2f,  10.8f }, // ×óÏÂ½Ç  
-		//	{ 19.2f, 10.8f }  // ÓÒÏÂ½Ç  
-		//};
-		//b2ChainShape chain;
-		//chain.CreateLoop(v, 4);
-		//b2BodyDef chainDef;
-		//chainDef.type = b2_staticBody;
-		//chainDef.position = b2Vec2_zero;
-		//
-		//Edge = world.CreateBody(&chainDef);
-		//b2FixtureDef edgeDef;
-		//edgeDef.shape = &chain;
-		//edgeDef.restitution = 0.9;
-		//Edge->CreateFixture(&edgeDef);
 	}
 	bool debugBreak = false;
-	float theta = 0;
+
 	void LOOP()
 	{
 		loop = true;
@@ -71,6 +60,10 @@ public:
 					break;
 				case SDLK_KP_0:
 					debugBreak = true;
+					break;
+				case SDLK_b:
+					ÐÐÐÇ->destroy();
+					Ì«Ñô->addSubGalaxy(ÎÀÐÇ);
 					break;
 				}
 				break;
@@ -107,19 +100,23 @@ public:
 		{
 			return b2Vec2{ SDL_cosf(angle),SDL_sinf(angle) };
 		};
-		//theta += M_PI / 180.0;
-		//asteroid2Body->SetTransform(asteroidBody->GetPosition() + 3.0f*vec(theta), 0);
-		// 
-		ÐÐÐÇ->applyOverAllForce(force);
-		//ÐÐÐÇ->applyForce(ÐÐÐÇ->computeForce());
-		//ÎÀÐÇ->applyForce(ÎÀÐÇ->computeForce());
+
+		Ì«Ñô->applyAcceleration(force);
+		Ì«Ñô->mainStella.body->ApplyTorque(Torque, true);
+		Ì«Ñô->satellites[0]->mainStella.body->ApplyTorque(0.5f * Torque, true);
 		// ²½½øÄ£ÄâÎïÀí¼ÆËã£¬
 		//  ´«Èë²½³¤¡¢ËÙ¶ÈÔ¼ÊøÇó½âÆ÷µÄµü´ú´ÎÊýºÍÎ»ÖÃÔ¼ÊøÇó½âÆ÷µÄµü´ú´ÎÊý¡£
 		world.Step(1 / 60.0f, 10, 8);
+		gameCamera.position = Ì«Ñô->mainStella.body->GetPosition();
 		// Çå¿ÕÆÁÄ»
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);
-		ÐÐÐÇ->draw(renderer, gameCamera);
+		if (!(Ì«Ñô->belongsTo) && Ì«Ñô->visible)
+			Ì«Ñô->draw(renderer, gameCamera);
+		if((!ÐÐÐÇ->belongsTo) && ÐÐÐÇ->visible)
+			ÐÐÐÇ->draw(renderer, gameCamera);
+		if ((!ÎÀÐÇ->belongsTo) && ÎÀÐÇ->visible)
+			ÎÀÐÇ->draw(renderer, gameCamera);
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
 		SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
@@ -134,16 +131,18 @@ public:
 	manager texManager;
 	camera gameCamera;
 	gameContactListener contact;
+	galaxy* Ì«Ñô;
 	galaxy *ÐÐÐÇ;
 	galaxy* ÎÀÐÇ;
-	b2Body* Edge;
 
 	Uint64 lastTime;
 
 	bool loop = false;
 	~gameInstance()
-	{
+	{	
 		delete ÐÐÐÇ;
+		delete Ì«Ñô;
+		delete ÎÀÐÇ;
 	}
 };
 
