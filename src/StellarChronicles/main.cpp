@@ -22,30 +22,31 @@ public:
 
 		texManager.LoadTex(renderer, "planet0.png", "01");
 		texManager.LoadTex(renderer, "planet1.png", "02");
-		sprites 小行星贴图1(texManager.GetTex("01"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		小行星1 = new asteroid(&world, 小行星贴图1, 1.0f, b2Vec2_zero, 1.0f);
-		sprites 小行星贴图2(texManager.GetTex("02"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		小行星2 = new asteroid(&world, 小行星贴图2, 1.0f, b2Vec2_zero, 1.0f);
-
+		sprites 行星贴图1(texManager.GetTex("01"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		sprites 行星贴图2(texManager.GetTex("02"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		行星 = new galaxy(&world, 行星贴图1, 1.0f, b2Vec2_zero, 1.0f);
+		卫星 = new galaxy(&world, 行星贴图2, 1.0f, b2Vec2{3.0f,0.0f}, 1.0f);
+		行星->addSubGalaxy(卫星);
 		gameCamera={ b2Vec2_zero,1.0f,0.0f };
+		world.SetContactListener(&contact);
 
-		b2Vec2 v[4] = {
-			{ 19.2f, -10.8f }, // 右上角  
-			{ -19.2f,  -10.8f }, // 左上角  
-			{-19.2f,  10.8f }, // 左下角  
-			{ 19.2f, 10.8f }  // 右下角  
-		};
-		b2ChainShape chain;
-		chain.CreateLoop(v, 4);
-		b2BodyDef chainDef;
-		chainDef.type = b2_staticBody;
-		chainDef.position = b2Vec2_zero;
-		
-		Edge = world.CreateBody(&chainDef);
-		b2FixtureDef edgeDef;
-		edgeDef.shape = &chain;
-		edgeDef.restitution = 0.9;
-		Edge->CreateFixture(&edgeDef);
+		//b2Vec2 v[4] = {
+		//	{ 19.2f, -10.8f }, // 右上角  
+		//	{ -19.2f,  -10.8f }, // 左上角  
+		//	{-19.2f,  10.8f }, // 左下角  
+		//	{ 19.2f, 10.8f }  // 右下角  
+		//};
+		//b2ChainShape chain;
+		//chain.CreateLoop(v, 4);
+		//b2BodyDef chainDef;
+		//chainDef.type = b2_staticBody;
+		//chainDef.position = b2Vec2_zero;
+		//
+		//Edge = world.CreateBody(&chainDef);
+		//b2FixtureDef edgeDef;
+		//edgeDef.shape = &chain;
+		//edgeDef.restitution = 0.9;
+		//Edge->CreateFixture(&edgeDef);
 	}
 	bool debugBreak = false;
 	float theta = 0;
@@ -102,27 +103,23 @@ public:
 		if (keyboardState[SDL_SCANCODE_E])
 			Torque += 1.0f;
 
-		小行星1->body->ApplyForceToCenter(force, true);
-		小行星1->body->ApplyTorque(Torque, true);
-		小行星2->body->SetAngularVelocity(1.0f);
 		auto vec = [](float angle) -> b2Vec2
 		{
 			return b2Vec2{ SDL_cosf(angle),SDL_sinf(angle) };
 		};
 		//theta += M_PI / 180.0;
 		//asteroid2Body->SetTransform(asteroidBody->GetPosition() + 3.0f*vec(theta), 0);
+		// 
+		行星->applyOverAllForce(force);
+		//行星->applyForce(行星->computeForce());
+		//卫星->applyForce(卫星->computeForce());
 		// 步进模拟物理计算，
 		//  传入步长、速度约束求解器的迭代次数和位置约束求解器的迭代次数。
 		world.Step(1 / 60.0f, 10, 8);
 		// 清空屏幕
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);
-
-		gameCamera.position = 小行星1->body->GetPosition();
-
-		小行星1->draw(renderer, gameCamera);
-		小行星2->draw(renderer, gameCamera);
-
+		行星->draw(renderer, gameCamera);
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
 		SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
@@ -136,8 +133,9 @@ public:
 	b2World world;
 	manager texManager;
 	camera gameCamera;
-	asteroid *小行星1;
-	asteroid *小行星2;
+	gameContactListener contact;
+	galaxy *行星;
+	galaxy* 卫星;
 	b2Body* Edge;
 
 	Uint64 lastTime;
@@ -145,8 +143,7 @@ public:
 	bool loop = false;
 	~gameInstance()
 	{
-		delete 小行星1;
-		delete 小行星2;
+		delete 行星;
 	}
 };
 

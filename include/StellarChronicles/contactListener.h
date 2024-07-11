@@ -5,8 +5,8 @@
 class gameContactListener:public b2ContactListener
 {
 public:
-	gameContactListener();
-	~gameContactListener();
+	gameContactListener() = default;
+	~gameContactListener()=default;
 	void BeginContact(b2Contact* contact) override;
 	void EndContact(b2Contact* contact) override;
 
