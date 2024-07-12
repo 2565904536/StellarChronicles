@@ -62,21 +62,21 @@ void galaxy::destroy()
 	}
 }
 
-//让星系整体受力
-void galaxy::applyAcceleration(b2Vec2 acceleration)
+void galaxy::applyMainStellarAcceleration(b2Vec2 acceleration)
 {
 	auto& body = this->mainStella.body;
 	body->ApplyForce(body->GetMass() * acceleration, body->GetPosition(), true);
-	for (auto& s : satellites)
-	{
-		s->applyAcceleration(acceleration);
-	}
+
 }
 
-void galaxy::applyForce(b2Vec2 Force)
+void galaxy::applystallitesAcceleration(b2Vec2 acceleration)
 {
-	auto& body = this->mainStella.body;
-	body->ApplyForce(Force, body->GetPosition(), true);
+	for (auto& s : satellites)
+	{
+		s->applyMainStellarAcceleration(acceleration);
+		s->applystallitesAcceleration(acceleration);
+	}
+
 }
 
 void galaxy::draw(SDL_Renderer *renderer, camera &camera)
@@ -102,9 +102,9 @@ void galaxy::draw(SDL_Renderer *renderer, camera &camera)
 	sprite.draw(renderer, pos, camera.scale);
 }
 
-b2Vec2 galaxy::computeForce()
+b2Vec2 galaxy::calculateGravitationalAcceleration(float gravitationalConstant)
 {
-	b2Vec2 force = { 0.0f, 0.0f };
+	b2Vec2 acc = { 0.0f, 0.0f };
 	for (auto& a : aroundGalaxies)
 	{
 		auto mass = a->mainStella.body->GetMass();
@@ -112,16 +112,32 @@ b2Vec2 galaxy::computeForce()
 		auto distance = vec.Normalize();
 		if (distance < b2_epsilon)
 			continue;
-		force += 10.0f * mainStella.body->GetMass() * mass / (distance * distance) * vec;
+		acc += gravitationalConstant * mass / (distance * distance) * vec;
 	}
-	return force;
+	return acc;
+}
+
+void galaxy::applyOrbitConstraints(float inv_dt)
+{
+
+	b2Vec2 acc = { 0.0f, 0.0f };
+	if (this->OrbitalLinkage)
+	{
+		acc = 1 / this->mainStella.body->GetMass() * this->OrbitalLinkage->GetReactionForce(inv_dt);
+	applystallitesAcceleration(acc);
+	}
+
+	for (auto& s : satellites)
+	{
+		s->applyOrbitConstraints(inv_dt);
+	}
 }
 
 bool galaxy::addSubGalaxy(galaxy* subGalaxy)
 {
 	//1. 防止包含子星系
 	//2. 防止重复包含
-	if (subGalaxy->belongsTo)
+	if (!subGalaxy||subGalaxy->belongsTo)
 		return false;
 
 	satellites.push_back(subGalaxy);

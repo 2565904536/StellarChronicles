@@ -38,7 +38,7 @@ public:
 		world.SetContactListener(&contact);
 	}
 	bool debugBreak = false;
-
+	int cameraindex = 0;
 	void LOOP()
 	{
 		loop = true;
@@ -64,6 +64,12 @@ public:
 				case SDLK_b:
 					行星->destroy();
 					太阳->addSubGalaxy(卫星);
+					break;
+				case SDLK_LEFT:
+					cameraindex--;
+					break;
+				case SDLK_RIGHT:
+					cameraindex++;
 					break;
 				}
 				break;
@@ -101,13 +107,33 @@ public:
 			return b2Vec2{ SDL_cosf(angle),SDL_sinf(angle) };
 		};
 
-		太阳->applyAcceleration(force);
+		太阳->applyMainStellarAcceleration(force);
+		太阳->applystallitesAcceleration(force);
 		太阳->mainStella.body->ApplyTorque(Torque, true);
 		太阳->satellites[0]->mainStella.body->ApplyTorque(0.5f * Torque, true);
+		太阳->applyOrbitConstraints(60.0f);
 		// 步进模拟物理计算，
 		//  传入步长、速度约束求解器的迭代次数和位置约束求解器的迭代次数。
 		world.Step(1 / 60.0f, 10, 8);
-		gameCamera.position = 太阳->mainStella.body->GetPosition();
+		switch (cameraindex)
+		{
+		case 0:
+			gameCamera.position = b2Vec2_zero;
+			break;
+		case 1:
+			gameCamera.position = 太阳->mainStella.body->GetPosition();
+			break;
+		case 2:
+			gameCamera.position = 行星->mainStella.body->GetPosition();
+			break;
+		case 3:
+			gameCamera.position = 卫星->mainStella.body->GetPosition();
+			break;
+		default:
+			cameraindex = 0;
+			break;
+		}
+
 		// 清空屏幕
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);

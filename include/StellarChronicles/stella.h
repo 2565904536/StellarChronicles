@@ -32,12 +32,13 @@ public:
 
 	std::vector<galaxy*> aroundGalaxies;
 
-	b2Vec2 computeForce();
+	b2Vec2 calculateGravitationalAcceleration(float gravitationalConstant);
+	void applyOrbitConstraints(float inv_dt);
 	bool addSubGalaxy(galaxy* subGalaxy);
 	bool removeSubGalaxy(galaxy* subGalaxy);
 	void destroy();
-	void applyAcceleration(b2Vec2 acceleration);
-	void applyForce(b2Vec2 Force);
+	void applyMainStellarAcceleration(b2Vec2 acceleration);
+	void applystallitesAcceleration(b2Vec2 acceleration);
 	void draw(SDL_Renderer *renderer, camera &camera);
 	bool visible = true;
 	b2Joint* OrbitalLinkage = nullptr;
