@@ -22,4 +22,10 @@ void gameContactListener::BeginContact(b2Contact *contact)
 	{
 		B->aroundGalaxies.push_back(A);
 	}
+	if (!fixtureA->IsSensor() && !fixtureB->IsSensor())
+	{
+		A->collisionGalaxies.push_back(B);
+		B->collisionGalaxies.push_back(A);
+	}
+
 }

@@ -32,9 +32,11 @@ public:
 
 	std::vector<galaxy*> aroundGalaxies;
 
+	std::vector<galaxy*> collisionGalaxies;
+
 	b2Vec2 calculateGravitationalAcceleration(float gravitationalConstant);
 	void applyOrbitConstraints(float inv_dt);
-	bool addSubGalaxy(galaxy* subGalaxy);
+	bool linkSubGalaxy(galaxy* subGalaxy);
 	bool removeSubGalaxy(galaxy* subGalaxy);
 	void destroy();
 	void applyMainStellarAcceleration(b2Vec2 acceleration);
@@ -42,6 +44,7 @@ public:
 	void draw(SDL_Renderer *renderer, camera &camera);
 	bool visible = true;
 	b2Joint* OrbitalLinkage = nullptr;
+	void addSubGalaxy();
 private:
 	enum class State
 	{

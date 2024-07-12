@@ -16,12 +16,17 @@ void gameContactListener::EndContact(b2Contact *contact)
 	if (fixtureA->IsSensor() && !fixtureB->IsSensor())
 	{
 		std::erase(A->aroundGalaxies, B);
-		return;
+
 	}
 
 	if (fixtureB->IsSensor() && !fixtureA->IsSensor())
 	{
 		std::erase(B->aroundGalaxies, A);
-		return;
+
+	}
+	if (!fixtureA->IsSensor()&&!fixtureB->IsSensor())
+	{
+		std::erase(A->collisionGalaxies, B);
+		std::erase(B->collisionGalaxies, A);
 	}
 }

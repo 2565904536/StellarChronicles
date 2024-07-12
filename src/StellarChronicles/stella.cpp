@@ -102,6 +102,29 @@ void galaxy::draw(SDL_Renderer *renderer, camera &camera)
 	sprite.draw(renderer, pos, camera.scale);
 }
 
+void galaxy::addSubGalaxy()
+{
+		auto& c = this->collisionGalaxies;
+	for (auto& g : aroundGalaxies)
+	{
+		if (std::find(c.begin(), c.end(), g) == c.end()&&[&]()-> bool {
+			auto v=this->mainStella.body->GetLinearVelocity()-g->mainStella.body->GetLinearVelocity();
+			if(v.LengthSquared()<100.0f)
+				return true;
+			return false;
+			}() && [&]()-> bool {
+				auto d=this->mainStella.body->GetPosition()-g->mainStella.body->GetPosition();
+				if (d.LengthSquared()<121.f)
+				return true;
+				return false;
+				}())
+		{
+			linkSubGalaxy(g);
+		}
+	}
+	return;
+}
+
 b2Vec2 galaxy::calculateGravitationalAcceleration(float gravitationalConstant)
 {
 	b2Vec2 acc = { 0.0f, 0.0f };
@@ -133,7 +156,7 @@ void galaxy::applyOrbitConstraints(float inv_dt)
 	}
 }
 
-bool galaxy::addSubGalaxy(galaxy* subGalaxy)
+bool galaxy::linkSubGalaxy(galaxy* subGalaxy)
 {
 	//1. ·ÀÖ¹°üº¬×ÓÐÇÏµ
 	//2. ·ÀÖ¹ÖØ¸´°üº¬

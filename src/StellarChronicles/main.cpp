@@ -30,8 +30,8 @@ public:
 		Œ¿–« = new galaxy(&world, –––«Ã˘Õº2, 0.1f, b2Vec2{1.0f,0.0f}, 0.3f);
 		Ã´—Ù = new galaxy(&world, Ã´—ÙÃ˘Õº, 1.0f, b2Vec2{ -3.0f,0.0f }, 5.0f);
 
-		–––«->addSubGalaxy(Œ¿–«);
-		Ã´—Ù->addSubGalaxy(–––«);
+		–––«->linkSubGalaxy(Œ¿–«);
+		Ã´—Ù->linkSubGalaxy(–––«);
 		Œ¿–«->mainStella.body->SetLinearVelocity({ 0.0f,1.0f });
 		–––«->mainStella.body->SetLinearVelocity({ 0.0f,3.0f });
 		gameCamera={ b2Vec2_zero,1.0f,0.0f };
@@ -63,7 +63,7 @@ public:
 					break;
 				case SDLK_b:
 					–––«->destroy();
-					Ã´—Ù->addSubGalaxy(Œ¿–«);
+					Ã´—Ù->linkSubGalaxy(Œ¿–«);
 					break;
 				case SDLK_LEFT:
 					cameraindex--;
