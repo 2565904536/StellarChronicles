@@ -6,6 +6,22 @@
 #include "StellarChronicles/sprites.h"
 #include "StellarChronicles/manager.h"
 #include "StellarChronicles/stella.h"
+#include "StellarChronicles/quadTree.h"
+
+
+	bool QuadTree::isEntityInRange(const galaxy& galaxy, const Rect& rect)
+	{
+		auto& x = galaxy.Position.x;
+		auto& y = galaxy.Position.y;
+		auto& r = galaxy.mainStar.radius;
+		float minX = x - r;
+		float minY = y - r;
+		float maxX = x + r;
+		float maxY = y + r;
+
+		return !(minX > rect.centerX + rect.halfW || maxX < rect.centerX - rect.halfW &&
+			minY > rect.centerY + rect.halfH || maxY < rect.centerY - rect.halfH);
+	}
 
 const vec2 vec2_zero{0.0f, 0.0f};
 Uint64 frequency = SDL_GetPerformanceFrequency();
@@ -24,9 +40,9 @@ public:
 		sprites ÐÐÐÇÌùÍ¼1(texManager.GetTex("01"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
 		sprites ÐÐÐÇÌùÍ¼2(texManager.GetTex("02"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
 		sprites Ì«ÑôÌùÍ¼(texManager.GetTex("03"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		Ì«Ñô = new galaxy{ {-3.0f,0.0f},5.0f,1.0f,Ì«ÑôÌùÍ¼ };
+		Ì«Ñô = new galaxy{ {-3.0f,0.0f},5.0f,1.0f,ÐÐÐÇÌùÍ¼1 };
 		ÐÐÐÇ = new galaxy{ {0.0f,0.0f},2.0f,0.5f,ÐÐÐÇÌùÍ¼1 };
-		ÎÀÐÇ = new galaxy{ {1.0f,0.0f},0.5f,0.2f,ÐÐÐÇÌùÍ¼2 };
+		ÎÀÐÇ = new galaxy{ {5.0f,0.0f},0.5f,0.2f,ÐÐÐÇÌùÍ¼2 };
 		//ÐÐÐÇ->Velocity = { 0.0f,1.0f };
 		ÐÐÐÇ->linkSubGalaxy(ÎÀÐÇ);
 		Ì«Ñô->linkSubGalaxy(ÐÐÐÇ);
@@ -59,8 +75,8 @@ public:
 					debugBreak = true;
 					break;
 				case SDLK_b:
-					//ÐÐÐÇ->destroy();
-					//Ì«Ñô->linkSubGalaxy(ÎÀÐÇ);
+					Ì«Ñô->removeSubGalaxy(ÐÐÐÇ);
+					//ÎÀÐÇ->linkSubGalaxy();
 					break;
 				case SDLK_LEFT:
 					cameraindex--;
@@ -87,39 +103,38 @@ public:
 		vec2 force = vec2_zero;
 		float Torque = 0.0f;
 		if (keyboardState[SDL_SCANCODE_A])
-			force += {-5.0f, 0.0f};
+		{
+			force += {-1.0f, 0.0f};
+		}
 		if (keyboardState[SDL_SCANCODE_S])
-			force += {0.0f, 5.0f};
+			force += {0.0f, 1.0f};
 		if (keyboardState[SDL_SCANCODE_D])
-			force += {5.0f, 0.0f};
+			force += {1.0f, 0.0f};
 		if (keyboardState[SDL_SCANCODE_W])
-			force += {0.0f, -5.0f};
+			force += {0.0f, -1.0f};
 		if (keyboardState[SDL_SCANCODE_Q])
 			Torque += -1.0f;
 		if (keyboardState[SDL_SCANCODE_E])
 			Torque += 1.0f;
 
-		//auto vec = [](float angle) -> b2Vec2
-		//{
-		//	return b2Vec2{ SDL_cosf(angle),SDL_sinf(angle) };
-		//};
 
-		//Ì«Ñô->applyMainStellarAcceleration(force);
-		//Ì«Ñô->applystallitesAcceleration(force);
-		//Ì«Ñô->mainStella.body->ApplyTorque(Torque, true);
-		//Ì«Ñô->satellites[0]->mainStella.body->ApplyTorque(0.5f * Torque, true);
-		//Ì«Ñô->applyOrbitConstraints(60.0f);
-		//// ²½½øÄ£ÄâÎïÀí¼ÆËã£¬
-		////  ´«Èë²½³¤¡¢ËÙ¶ÈÔ¼ÊøÇó½âÆ÷µÄµü´ú´ÎÊýºÍÎ»ÖÃÔ¼ÊøÇó½âÆ÷µÄµü´ú´ÎÊý¡£
-		//world.Step(1 / 60.0f, 10, 8);
-
+		QuadTree starTree{{0.0f,0.0f,10000.0f,10000.0f}};
+		starTree.insert(*Ì«Ñô);
+		starTree.insert(*ÐÐÐÇ);
+		starTree.insert(*ÎÀÐÇ);
+		auto aroundGalaxies = starTree.query({ gameCamera.position.x,gameCamera.position.y,15.0f,15.0f });
 		static float time = 1 / 60.0f;
-		Ì«Ñô->applyOrbitConstraints(time);
-		ÐÐÐÇ->applyOrbitConstraints(time);
-		ÎÀÐÇ->applyOrbitConstraints(time);
-		Ì«Ñô->update();
-		ÐÐÐÇ->update();
-		ÎÀÐÇ->update();
+		Ì«Ñô->applyAccleration(force);
+		Ì«Ñô->contactProcess(starTree, time);
+		ÐÐÐÇ->contactProcess(starTree, time);
+		ÎÀÐÇ->contactProcess(starTree, time);
+
+		Ì«Ñô->PhysicStep(time);
+		ÐÐÐÇ->PhysicStep(time);
+		ÎÀÐÇ->PhysicStep(time);
+		//Ì«Ñô->update();
+		//ÐÐÐÇ->update();
+		//ÎÀÐÇ->update();
 
 		switch (cameraindex)
 		{
@@ -127,13 +142,13 @@ public:
 			gameCamera.position = vec2_zero;
 			break;
 		case 1:
-			gameCamera.position = Ì«Ñô->Position;
+			gameCamera.position = Ì«Ñô->getPosition();
 			break;
 		case 2:
-			gameCamera.position = ÐÐÐÇ->Position;
+			gameCamera.position = ÐÐÐÇ->getPosition();
 			break;
 		case 3:
-			gameCamera.position = ÎÀÐÇ->Position;
+			gameCamera.position = ÎÀÐÇ->getPosition();
 			break;
 		default:
 			cameraindex = 0;
@@ -154,8 +169,7 @@ public:
 		SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
 		// ÏÔÊ¾äÖÈ¾ÄÚÈÝ
 		SDL_RenderPresent(renderer);
-		auto d = ÎÀÐÇ->Position - ÐÐÐÇ->Position - vec2{ 1.0f,0.0f };
-		std::print("\rfps:{:.4f} distance={:.4f}", fps, d.length());
+		std::print("\rfps:{:.4f}", fps);
 		// °´Ð¡¼üÅÌ0ÖÐ¶Ï³ÌÐò
 		if (debugBreak)
 			debugBreak = false;

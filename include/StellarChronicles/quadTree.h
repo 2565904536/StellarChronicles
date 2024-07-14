@@ -1,7 +1,9 @@
 #pragma once
 #include <vector>
+#include "StellarChronicles/stella.h"
 
-template <class Entity>
+#ifndef Entity
+#define Entity galaxy
 class QuadTree
 {
 public:
@@ -15,14 +17,14 @@ public:
 
 	explicit QuadTree(Rect range) : _range(range) {}
 	~QuadTree() = default;
-	void insert(Entity &entity)
+	void insert(Entity& entity)
 	{
 		if (!isEntityInRange(entity, _range))
 		{
 			return;
 		}
 
-		if (this->isLeaf() && this->_contain.size() >= this->_MaxCpacity)
+		if (this->isLeaf() && this->_contain.size() >= this->_MaxCapacity)
 		{
 			this->subDivide();
 		}
@@ -33,7 +35,7 @@ public:
 		}
 		else
 		{
-			for (QuadTree<Entity> &child : this->_children)
+			for (auto& child : this->_children)
 			{
 				child.insert(entity);
 			}
@@ -48,26 +50,26 @@ public:
 		}
 		else
 		{
-			for (QuadTree<Entity>& child : this->_children)
+			for (auto& child : this->_children)
 			{
 				child.remove(entity);
 			}
 		}
 	}
 
-	std::vector<Entity *> query(const Rect &range)
+	std::vector<Entity*> query(const Rect& range)
 	{
-		std::vector<Entity *> entitiesInRange;
+		std::vector<Entity*> entitiesInRange;
 		this->search(range, entitiesInRange);
 		return entitiesInRange;
 	}
-
+    bool isEntityInRange(const Entity&, const Rect&);
 private:
-	int _depth;
-	int _MaxDepth;
-	int _MaxCapacity;
-	virtual bool isEntityInRange(const Entity &, const Rect &) = 0;
-	bool isRangeInRange(const Rect &A, const Rect &B)
+	int _depth = 0;
+	int _MaxDepth = 5;
+	int _MaxCapacity = 3;
+
+	bool isRangeInRange(const Rect& A, const Rect& B)
 	{
 		float AleftX = A.centerX - A.halfW;
 		float ArightX = A.centerX + A.halfW;
@@ -82,8 +84,8 @@ private:
 		return !(ArightX < BleftX || AleftX > BrightX || AupY < BlowY || AlowY > BupY);
 	}
 	Rect _range;
-	std::vector<Entity *> _contain;
-	std::vector<QuadTree<Entity>> _children;
+	std::vector<Entity*> _contain;
+	std::vector<QuadTree> _children;
 
 	inline bool isLeaf()
 	{
@@ -98,11 +100,11 @@ private:
 		}
 
 		Rect subDivideRange[4] =
-			{
-				Rect{_range.centerX + _range.halfW * 0.5f, _range.centerY + _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
-				Rect{_range.centerX - _range.halfW * 0.5f, _range.centerY + _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
-				Rect{_range.centerX - _range.halfW * 0.5f, _range.centerY - _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
-				Rect{_range.centerX + _range.halfW * 0.5f, _range.centerY - _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f}};
+		{
+			Rect{_range.centerX + _range.halfW * 0.5f, _range.centerY + _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
+			Rect{_range.centerX - _range.halfW * 0.5f, _range.centerY + _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
+			Rect{_range.centerX - _range.halfW * 0.5f, _range.centerY - _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
+			Rect{_range.centerX + _range.halfW * 0.5f, _range.centerY - _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f} };
 
 		for (int i = 0; i < 4; i++)
 		{
@@ -110,7 +112,7 @@ private:
 			this->_children[i]._depth++;
 		}
 
-		for (const Entity *&entity : this->_contain)
+		for (const auto& entity : this->_contain)
 		{
 			this->_children[0].insert(*entity);
 			this->_children[1].insert(*entity);
@@ -121,7 +123,7 @@ private:
 		this->_contain.clear();
 	}
 
-	void search(const Rect &range, std::vector<Entity *> &entitiesInRange)
+	void search(const Rect& range, std::vector<Entity*>& entitiesInRange)
 	{
 		if (!isRangeInRange(range, _range))
 		{
@@ -130,9 +132,9 @@ private:
 
 		if (this->isLeaf())
 		{
-			for (const Entity &entity : this->_contain)
+			for (const auto& entity : this->_contain)
 			{
-				if (isEntityInRange(entity, range))
+				if (isEntityInRange(*entity, range))
 				{
 					entitiesInRange.push_back(entity);
 				}
@@ -140,10 +142,16 @@ private:
 		}
 		else
 		{
-			for (QuadTree<Entity> &child : this->_children)
+			for (auto& child : this->_children)
 			{
 				child.search(range, entitiesInRange);
 			}
 		}
 	}
 };
+
+#undef Entity
+
+#endif // !Entity
+
+

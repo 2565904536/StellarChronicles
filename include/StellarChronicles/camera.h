@@ -31,10 +31,16 @@ struct vec2
 	{
 		return sqrtf(lengthSqure());
 	}
-
+	float operator*(const vec2& b) const
+	{
+		return x* b.x + y * b.y;
+	}
+	vec2 operator/(float b) const
+	{
+		return vec2{ x / b,y / b };
+	}
 	float angle() const
 	{
-		auto l = this->length();
 		return atan2f(y, x);
 	}
 };
