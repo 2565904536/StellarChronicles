@@ -1,57 +1,56 @@
 #pragma once
-#include "box2d/box2d.h"
-#include "StellarChronicles/manager.h"
 #include "StellarChronicles/sprites.h"
 #include "StellarChronicles/camera.h"
 #include <vector>
 
+class galaxy;
+class QuadTree;
+class stella
+{
+public:
+	stella(float mass, float radius, sprites& sprite,galaxy* owner);
+	~stella() = default;
+	friend class galaxy;
+	float radius;
+private:
+
+	float mass;
+
+	float spinAng=0.0f;
+	float spinVel=0.0f;
+
+	sprites sprite;
+	galaxy* owner;
+};
+
 class galaxy
 {
 public:
-	class stella
-	{
-		stella(b2World* world, const sprites& sprite, float radius, const b2Vec2& position, float mass);
-		friend galaxy;
-	public:
-		~stella();
-		sprites sprite;
-		b2Body* body;
-		galaxy* belongsTo;
-	};
+	galaxy(vec2 position, float mass, float radius, sprites& sprite);
+	friend class QuadTree;
+	//作为子星系的属性
+	galaxy* owner= nullptr;
+	float orbitRadius=0.0f;
+	float orbitAng=0.0f;
+	float orbitAngVel=0.0f;
+	float orbitAngAcc = 0.0f;
+	bool isUpdated = false;
 
-	galaxy(b2World* world, const sprites& sprite, float radius, const b2Vec2& position, float mass);
-	~galaxy();
-	//中心星系
-	stella mainStella;
-	//卫星星系
+
+	stella mainStar;
 	std::vector<galaxy*> satellites;
 
-	//std::vector<b2Vec3> attributes;
-
-	galaxy* belongsTo = nullptr;
-
-	std::vector<galaxy*> aroundGalaxies;
-
-	std::vector<galaxy*> collisionGalaxies;
-
-	b2Vec2 calculateGravitationalAcceleration(float gravitationalConstant);
-	void applyOrbitConstraints(float inv_dt);
-	bool linkSubGalaxy(galaxy* subGalaxy);
-	bool removeSubGalaxy(galaxy* subGalaxy);
-	void destroy();
-	void applyMainStellarAcceleration(b2Vec2 acceleration);
-	void applystallitesAcceleration(b2Vec2 acceleration);
+	void PhysicStep(float time);
+	void linkSubGalaxy(galaxy* subGalaxy);
+	void removeSubGalaxy(galaxy* subGalaxy);
+	void applyAccleration(const vec2& acc);
+	void update();
 	void draw(SDL_Renderer *renderer, camera &camera);
-	bool visible = true;
-	b2Joint* OrbitalLinkage = nullptr;
-	void addSubGalaxy();
+	void contactProcess(QuadTree &tree,float time);
+	vec2 getPosition() const;
+	vec2 Velocity;
 private:
-	enum class State
-	{
-		ALIVE,
-		DESTROYED
-	} state;
-	int level = 0;
+	vec2 Position;
+	vec2 Accleration;
 };
-
 

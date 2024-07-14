@@ -2,20 +2,34 @@
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
 #include "SDL2/SDL_ttf.h"
-#include "box2d/box2d.h"
 #include "StellarChronicles/game.h"
 #include "StellarChronicles/sprites.h"
 #include "StellarChronicles/manager.h"
-#include "StellarChronicles/contactListener.h"
 #include "StellarChronicles/stella.h"
+#include "StellarChronicles/quadTree.h"
 
-const b2Vec2 b2Vec2_zero{0.0f, 0.0f};
+
+	bool QuadTree::isEntityInRange(const galaxy& galaxy, const Rect& rect)
+	{
+		auto& x = galaxy.Position.x;
+		auto& y = galaxy.Position.y;
+		auto& r = galaxy.mainStar.radius;
+		float minX = x - r;
+		float minY = y - r;
+		float maxX = x + r;
+		float maxY = y + r;
+
+		return !(minX > rect.centerX + rect.halfW || maxX < rect.centerX - rect.halfW &&
+			minY > rect.centerY + rect.halfH || maxY < rect.centerY - rect.halfH);
+	}
+
+const vec2 vec2_zero{0.0f, 0.0f};
 Uint64 frequency = SDL_GetPerformanceFrequency();
 class gameInstance : public game
 {
 public:
 	gameInstance(std::string_view name, int x, int y, int w, int h, Uint32 flags)
-		: game(name, x, y, w, h, flags), world(b2Vec2_zero) {}
+		: game(name, x, y, w, h, flags) {}
 	void INIT()
 	{
 		lastTime = SDL_GetPerformanceCounter();
@@ -26,16 +40,15 @@ public:
 		sprites ĞĞĞÇÌùÍ¼1(texManager.GetTex("01"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
 		sprites ĞĞĞÇÌùÍ¼2(texManager.GetTex("02"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
 		sprites Ì«ÑôÌùÍ¼(texManager.GetTex("03"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		ĞĞĞÇ = new galaxy(&world, ĞĞĞÇÌùÍ¼1, 0.5f, b2Vec2_zero, 1.0f);
-		ÎÀĞÇ = new galaxy(&world, ĞĞĞÇÌùÍ¼2, 0.1f, b2Vec2{1.0f,0.0f}, 0.3f);
-		Ì«Ñô = new galaxy(&world, Ì«ÑôÌùÍ¼, 1.0f, b2Vec2{ -3.0f,0.0f }, 5.0f);
-
+		Ì«Ñô = new galaxy{ {-3.0f,0.0f},5.0f,1.0f,ĞĞĞÇÌùÍ¼1 };
+		ĞĞĞÇ = new galaxy{ {0.0f,0.0f},2.0f,0.5f,ĞĞĞÇÌùÍ¼1 };
+		ÎÀĞÇ = new galaxy{ {5.0f,0.0f},0.5f,0.2f,ĞĞĞÇÌùÍ¼2 };
+		//ĞĞĞÇ->Velocity = { 0.0f,1.0f };
 		ĞĞĞÇ->linkSubGalaxy(ÎÀĞÇ);
 		Ì«Ñô->linkSubGalaxy(ĞĞĞÇ);
-		ÎÀĞÇ->mainStella.body->SetLinearVelocity({ 0.0f,1.0f });
-		ĞĞĞÇ->mainStella.body->SetLinearVelocity({ 0.0f,3.0f });
-		gameCamera={ b2Vec2_zero,1.0f,0.0f };
-		world.SetContactListener(&contact);
+		gameCamera={ vec2_zero,1.0f,0.0f };
+
+
 	}
 	bool debugBreak = false;
 	int cameraindex = 0;
@@ -62,8 +75,8 @@ public:
 					debugBreak = true;
 					break;
 				case SDLK_b:
-					ĞĞĞÇ->destroy();
-					Ì«Ñô->linkSubGalaxy(ÎÀĞÇ);
+					Ì«Ñô->removeSubGalaxy(ĞĞĞÇ);
+					//ÎÀĞÇ->linkSubGalaxy();
 					break;
 				case SDLK_LEFT:
 					cameraindex--;
@@ -87,47 +100,55 @@ public:
 		}
 
 		auto keyboardState = SDL_GetKeyboardState(NULL);
-		b2Vec2 force = b2Vec2_zero;
+		vec2 force = vec2_zero;
 		float Torque = 0.0f;
 		if (keyboardState[SDL_SCANCODE_A])
-			force += {-5.0f, 0.0f};
+		{
+			force += {-1.0f, 0.0f};
+		}
 		if (keyboardState[SDL_SCANCODE_S])
-			force += {0.0f, 5.0f};
+			force += {0.0f, 1.0f};
 		if (keyboardState[SDL_SCANCODE_D])
-			force += {5.0f, 0.0f};
+			force += {1.0f, 0.0f};
 		if (keyboardState[SDL_SCANCODE_W])
-			force += {0.0f, -5.0f};
+			force += {0.0f, -1.0f};
 		if (keyboardState[SDL_SCANCODE_Q])
 			Torque += -1.0f;
 		if (keyboardState[SDL_SCANCODE_E])
 			Torque += 1.0f;
 
-		auto vec = [](float angle) -> b2Vec2
-		{
-			return b2Vec2{ SDL_cosf(angle),SDL_sinf(angle) };
-		};
 
-		Ì«Ñô->applyMainStellarAcceleration(force);
-		Ì«Ñô->applystallitesAcceleration(force);
-		Ì«Ñô->mainStella.body->ApplyTorque(Torque, true);
-		Ì«Ñô->satellites[0]->mainStella.body->ApplyTorque(0.5f * Torque, true);
-		Ì«Ñô->applyOrbitConstraints(60.0f);
-		// ²½½øÄ£ÄâÎïÀí¼ÆËã£¬
-		//  ´«Èë²½³¤¡¢ËÙ¶ÈÔ¼ÊøÇó½âÆ÷µÄµü´ú´ÎÊıºÍÎ»ÖÃÔ¼ÊøÇó½âÆ÷µÄµü´ú´ÎÊı¡£
-		world.Step(1 / 60.0f, 10, 8);
+		QuadTree starTree{{0.0f,0.0f,10000.0f,10000.0f}};
+		starTree.insert(*Ì«Ñô);
+		starTree.insert(*ĞĞĞÇ);
+		starTree.insert(*ÎÀĞÇ);
+		auto aroundGalaxies = starTree.query({ gameCamera.position.x,gameCamera.position.y,15.0f,15.0f });
+		static float time = 1 / 60.0f;
+		Ì«Ñô->applyAccleration(force);
+		Ì«Ñô->contactProcess(starTree, time);
+		ĞĞĞÇ->contactProcess(starTree, time);
+		ÎÀĞÇ->contactProcess(starTree, time);
+
+		Ì«Ñô->PhysicStep(time);
+		ĞĞĞÇ->PhysicStep(time);
+		ÎÀĞÇ->PhysicStep(time);
+		//Ì«Ñô->update();
+		//ĞĞĞÇ->update();
+		//ÎÀĞÇ->update();
+
 		switch (cameraindex)
 		{
 		case 0:
-			gameCamera.position = b2Vec2_zero;
+			gameCamera.position = vec2_zero;
 			break;
 		case 1:
-			gameCamera.position = Ì«Ñô->mainStella.body->GetPosition();
+			gameCamera.position = Ì«Ñô->getPosition();
 			break;
 		case 2:
-			gameCamera.position = ĞĞĞÇ->mainStella.body->GetPosition();
+			gameCamera.position = ĞĞĞÇ->getPosition();
 			break;
 		case 3:
-			gameCamera.position = ÎÀĞÇ->mainStella.body->GetPosition();
+			gameCamera.position = ÎÀĞÇ->getPosition();
 			break;
 		default:
 			cameraindex = 0;
@@ -137,26 +158,25 @@ public:
 		// Çå¿ÕÆÁÄ»
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);
-		if (!(Ì«Ñô->belongsTo) && Ì«Ñô->visible)
+
 			Ì«Ñô->draw(renderer, gameCamera);
-		if((!ĞĞĞÇ->belongsTo) && ĞĞĞÇ->visible)
+
 			ĞĞĞÇ->draw(renderer, gameCamera);
-		if ((!ÎÀĞÇ->belongsTo) && ÎÀĞÇ->visible)
+
 			ÎÀĞÇ->draw(renderer, gameCamera);
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
 		SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
 		// ÏÔÊ¾äÖÈ¾ÄÚÈİ
 		SDL_RenderPresent(renderer);
-		    std::print("\rfps:{:.4f}", fps);
+		std::print("\rfps:{:.4f}", fps);
 		// °´Ğ¡¼üÅÌ0ÖĞ¶Ï³ÌĞò
 		if (debugBreak)
 			debugBreak = false;
 	}
-	b2World world;
+
 	manager texManager;
 	camera gameCamera;
-	gameContactListener contact;
 	galaxy* Ì«Ñô;
 	galaxy *ĞĞĞÇ;
 	galaxy* ÎÀĞÇ;
