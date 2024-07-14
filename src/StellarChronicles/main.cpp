@@ -2,20 +2,18 @@
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
 #include "SDL2/SDL_ttf.h"
-#include "box2d/box2d.h"
 #include "StellarChronicles/game.h"
 #include "StellarChronicles/sprites.h"
 #include "StellarChronicles/manager.h"
-#include "StellarChronicles/contactListener.h"
 #include "StellarChronicles/stella.h"
 
-const b2Vec2 b2Vec2_zero{0.0f, 0.0f};
+const vec2 vec2_zero{0.0f, 0.0f};
 Uint64 frequency = SDL_GetPerformanceFrequency();
 class gameInstance : public game
 {
 public:
 	gameInstance(std::string_view name, int x, int y, int w, int h, Uint32 flags)
-		: game(name, x, y, w, h, flags), world(b2Vec2_zero) {}
+		: game(name, x, y, w, h, flags) {}
 	void INIT()
 	{
 		lastTime = SDL_GetPerformanceCounter();
@@ -26,16 +24,15 @@ public:
 		sprites 行星贴图1(texManager.GetTex("01"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
 		sprites 行星贴图2(texManager.GetTex("02"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
 		sprites 太阳贴图(texManager.GetTex("03"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		行星 = new galaxy(&world, 行星贴图1, 0.5f, b2Vec2_zero, 1.0f);
-		卫星 = new galaxy(&world, 行星贴图2, 0.1f, b2Vec2{1.0f,0.0f}, 0.3f);
-		太阳 = new galaxy(&world, 太阳贴图, 1.0f, b2Vec2{ -3.0f,0.0f }, 5.0f);
-
+		太阳 = new galaxy{ {-3.0f,0.0f},5.0f,1.0f,太阳贴图 };
+		行星 = new galaxy{ {0.0f,0.0f},2.0f,0.5f,行星贴图1 };
+		卫星 = new galaxy{ {1.0f,0.0f},0.5f,0.2f,行星贴图2 };
+		//行星->Velocity = { 0.0f,1.0f };
 		行星->linkSubGalaxy(卫星);
 		太阳->linkSubGalaxy(行星);
-		卫星->mainStella.body->SetLinearVelocity({ 0.0f,1.0f });
-		行星->mainStella.body->SetLinearVelocity({ 0.0f,3.0f });
-		gameCamera={ b2Vec2_zero,1.0f,0.0f };
-		world.SetContactListener(&contact);
+		gameCamera={ vec2_zero,1.0f,0.0f };
+
+
 	}
 	bool debugBreak = false;
 	int cameraindex = 0;
@@ -62,8 +59,8 @@ public:
 					debugBreak = true;
 					break;
 				case SDLK_b:
-					行星->destroy();
-					太阳->linkSubGalaxy(卫星);
+					//行星->destroy();
+					//太阳->linkSubGalaxy(卫星);
 					break;
 				case SDLK_LEFT:
 					cameraindex--;
@@ -87,7 +84,7 @@ public:
 		}
 
 		auto keyboardState = SDL_GetKeyboardState(NULL);
-		b2Vec2 force = b2Vec2_zero;
+		vec2 force = vec2_zero;
 		float Torque = 0.0f;
 		if (keyboardState[SDL_SCANCODE_A])
 			force += {-5.0f, 0.0f};
@@ -102,32 +99,41 @@ public:
 		if (keyboardState[SDL_SCANCODE_E])
 			Torque += 1.0f;
 
-		auto vec = [](float angle) -> b2Vec2
-		{
-			return b2Vec2{ SDL_cosf(angle),SDL_sinf(angle) };
-		};
+		//auto vec = [](float angle) -> b2Vec2
+		//{
+		//	return b2Vec2{ SDL_cosf(angle),SDL_sinf(angle) };
+		//};
 
-		太阳->applyMainStellarAcceleration(force);
-		太阳->applystallitesAcceleration(force);
-		太阳->mainStella.body->ApplyTorque(Torque, true);
-		太阳->satellites[0]->mainStella.body->ApplyTorque(0.5f * Torque, true);
-		太阳->applyOrbitConstraints(60.0f);
-		// 步进模拟物理计算，
-		//  传入步长、速度约束求解器的迭代次数和位置约束求解器的迭代次数。
-		world.Step(1 / 60.0f, 10, 8);
+		//太阳->applyMainStellarAcceleration(force);
+		//太阳->applystallitesAcceleration(force);
+		//太阳->mainStella.body->ApplyTorque(Torque, true);
+		//太阳->satellites[0]->mainStella.body->ApplyTorque(0.5f * Torque, true);
+		//太阳->applyOrbitConstraints(60.0f);
+		//// 步进模拟物理计算，
+		////  传入步长、速度约束求解器的迭代次数和位置约束求解器的迭代次数。
+		//world.Step(1 / 60.0f, 10, 8);
+
+		static float time = 1 / 60.0f;
+		太阳->applyOrbitConstraints(time);
+		行星->applyOrbitConstraints(time);
+		卫星->applyOrbitConstraints(time);
+		太阳->update();
+		行星->update();
+		卫星->update();
+
 		switch (cameraindex)
 		{
 		case 0:
-			gameCamera.position = b2Vec2_zero;
+			gameCamera.position = vec2_zero;
 			break;
 		case 1:
-			gameCamera.position = 太阳->mainStella.body->GetPosition();
+			gameCamera.position = 太阳->Position;
 			break;
 		case 2:
-			gameCamera.position = 行星->mainStella.body->GetPosition();
+			gameCamera.position = 行星->Position;
 			break;
 		case 3:
-			gameCamera.position = 卫星->mainStella.body->GetPosition();
+			gameCamera.position = 卫星->Position;
 			break;
 		default:
 			cameraindex = 0;
@@ -137,26 +143,26 @@ public:
 		// 清空屏幕
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);
-		if (!(太阳->belongsTo) && 太阳->visible)
+
 			太阳->draw(renderer, gameCamera);
-		if((!行星->belongsTo) && 行星->visible)
+
 			行星->draw(renderer, gameCamera);
-		if ((!卫星->belongsTo) && 卫星->visible)
+
 			卫星->draw(renderer, gameCamera);
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
 		SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
 		// 显示渲染内容
 		SDL_RenderPresent(renderer);
-		    std::print("\rfps:{:.4f}", fps);
+		auto d = 卫星->Position - 行星->Position - vec2{ 1.0f,0.0f };
+		std::print("\rfps:{:.4f} distance={:.4f}", fps, d.length());
 		// 按小键盘0中断程序
 		if (debugBreak)
 			debugBreak = false;
 	}
-	b2World world;
+
 	manager texManager;
 	camera gameCamera;
-	gameContactListener contact;
 	galaxy* 太阳;
 	galaxy *行星;
 	galaxy* 卫星;
