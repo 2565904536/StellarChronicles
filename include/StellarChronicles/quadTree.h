@@ -81,7 +81,7 @@ private:
 		float BlowY = B.centerY - B.halfH;
 		float BupY = B.centerY + B.halfH;
 
-		return !(ArightX < BleftX || AleftX > BrightX || AupY < BlowY || AlowY > BupY);
+		return !((ArightX < BleftX || AleftX > BrightX) && (AupY < BlowY || AlowY > BupY));
 	}
 	Rect _range;
 	std::vector<Entity*> _contain;
