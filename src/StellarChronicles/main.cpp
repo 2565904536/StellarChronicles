@@ -7,24 +7,26 @@
 #include "StellarChronicles/manager.h"
 #include "StellarChronicles/stella.h"
 #include "StellarChronicles/quadTree.h"
+#include <random>
 
+bool QuadTree::isEntityInRange(const galaxy &galaxy, const Rect &rect)
+{
+	auto &x = galaxy.Position.x;
+	auto &y = galaxy.Position.y;
+	auto &r = galaxy.mainStar.radius;
+	float minX = x - r;
+	float minY = y - r;
+	float maxX = x + r;
+	float maxY = y + r;
 
-	bool QuadTree::isEntityInRange(const galaxy& galaxy, const Rect& rect)
-	{
-		auto& x = galaxy.Position.x;
-		auto& y = galaxy.Position.y;
-		auto& r = galaxy.mainStar.radius;
-		float minX = x - r;
-		float minY = y - r;
-		float maxX = x + r;
-		float maxY = y + r;
-
-		return !(minX > rect.centerX + rect.halfW || maxX < rect.centerX - rect.halfW &&
-			minY > rect.centerY + rect.halfH || maxY < rect.centerY - rect.halfH);
-	}
+	return !(minX > rect.centerX + rect.halfW || maxX < rect.centerX - rect.halfW && minY > rect.centerY + rect.halfH || maxY < rect.centerY - rect.halfH);
+}
 
 const vec2 vec2_zero{0.0f, 0.0f};
 Uint64 frequency = SDL_GetPerformanceFrequency();
+std::random_device rd;
+std::mt19937 gen(rd());
+std::uniform_real_distribution<float> random(0.0f, 1.0f);
 class gameInstance : public game
 {
 public:
@@ -37,18 +39,24 @@ public:
 		texManager.LoadTex(renderer, "planet0.png", "01");
 		texManager.LoadTex(renderer, "planet1.png", "02");
 		texManager.LoadTex(renderer, "0001.png", "03");
-		sprites ÐÐÐÇÌùÍ¼1(texManager.GetTex("01"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		sprites ÐÐÐÇÌùÍ¼2(texManager.GetTex("02"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		sprites Ì«ÑôÌùÍ¼(texManager.GetTex("03"), { 1,1 }, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		Ì«Ñô = new galaxy{ {-3.0f,0.0f},5.0f,1.0f,ÐÐÐÇÌùÍ¼1 };
-		ÐÐÐÇ = new galaxy{ {0.0f,0.0f},2.0f,0.5f,ÐÐÐÇÌùÍ¼1 };
-		ÎÀÐÇ = new galaxy{ {5.0f,0.0f},0.5f,0.2f,ÐÐÐÇÌùÍ¼2 };
-		//ÐÐÐÇ->Velocity = { 0.0f,1.0f };
-		ÐÐÐÇ->linkSubGalaxy(ÎÀÐÇ);
+		sprites ÐÐÐÇÌùÍ¼1(texManager.GetTex("01"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		sprites ÐÐÐÇÌùÍ¼2(texManager.GetTex("02"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		sprites Ì«ÑôÌùÍ¼(texManager.GetTex("03"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		Ì«Ñô = new galaxy{{-3.0f, 0.0f}, 5.0f, 1.0f, ÐÐÐÇÌùÍ¼1};
+		ÐÐÐÇ = new galaxy{{0.0f, 0.0f}, 2.0f, 0.5f, ÐÐÐÇÌùÍ¼1};
+		ÎÀÐÇ = new galaxy{{5.0f, 0.0f}, 0.5f, 0.2f, ÐÐÐÇÌùÍ¼2};
+		for (int i = 0; i < 1;i++)
+		{
+			galaxies.push_back(new galaxy{
+				vec2{20.0f + 10.0f * random(gen), 20.0f + 10.0f * random(gen)},
+				0.5f,
+				0.2f + 0.5f * random(gen),
+				ÐÐÐÇÌùÍ¼2});
+		}
+			// ÐÐÐÇ->Velocity = { 0.0f,1.0f };
+			ÐÐÐÇ->linkSubGalaxy(ÎÀÐÇ);
 		Ì«Ñô->linkSubGalaxy(ÐÐÐÇ);
-		gameCamera={ vec2_zero,1.0f,0.0f };
-
-
+		gameCamera = {vec2_zero, 1.0f, 0.0f};
 	}
 	bool debugBreak = false;
 	int cameraindex = 0;
@@ -76,7 +84,7 @@ public:
 					break;
 				case SDLK_b:
 					Ì«Ñô->removeSubGalaxy(ÐÐÐÇ);
-					//ÎÀÐÇ->linkSubGalaxy();
+					// ÎÀÐÇ->linkSubGalaxy();
 					break;
 				case SDLK_LEFT:
 					cameraindex--;
@@ -117,27 +125,34 @@ public:
 		if (keyboardState[SDL_SCANCODE_E])
 			Torque += 1.0f;
 
-
-		QuadTree starTree{{0.0f,0.0f,10000.0f,10000.0f}};
+		QuadTree starTree{{50.0f, 50.0f,50.0f, 50.0f}};
 		starTree.insert(*Ì«Ñô);
-		starTree.insert(*ÐÐÐÇ);
-		starTree.insert(*ÎÀÐÇ);
-		auto aroundGalaxies = starTree.query({ gameCamera.position.x,gameCamera.position.y,15.0f,15.0f });
+		//starTree.insert(*ÐÐÐÇ);
+		//starTree.insert(*ÎÀÐÇ);
+		//for(auto&s:galaxies)
+		//	starTree.insert(*s);
+		auto aroundGalaxies = starTree.query({gameCamera.position.x, gameCamera.position.y, 15.0f, 15.0f});
 		static float time = 1 / 60.0f;
 		Ì«Ñô->applyAccleration(force);
 		Ì«Ñô->contactProcess(starTree, time);
 		ÐÐÐÇ->contactProcess(starTree, time);
 		ÎÀÐÇ->contactProcess(starTree, time);
+		for(auto&s:galaxies)
+			s->contactProcess(starTree, time);
 		Ì«Ñô->gravitationProcess(starTree);
 		ÐÐÐÇ->gravitationProcess(starTree);
 		ÎÀÐÇ->gravitationProcess(starTree);
+		for(auto&s:galaxies)
+			s->gravitationProcess(starTree);
 
 		Ì«Ñô->PhysicStep(time);
 		ÐÐÐÇ->PhysicStep(time);
 		ÎÀÐÇ->PhysicStep(time);
-		//Ì«Ñô->update();
-		//ÐÐÐÇ->update();
-		//ÎÀÐÇ->update();
+		for(auto&s:galaxies)
+			s->PhysicStep(time);
+		// Ì«Ñô->update();
+		// ÐÐÐÇ->update();
+		// ÎÀÐÇ->update();
 
 		switch (cameraindex)
 		{
@@ -162,11 +177,11 @@ public:
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);
 
-			Ì«Ñô->draw(renderer, gameCamera);
+		Ì«Ñô->draw(renderer, gameCamera);
 
-			ÐÐÐÇ->draw(renderer, gameCamera);
+		ÐÐÐÇ->draw(renderer, gameCamera);
 
-			ÎÀÐÇ->draw(renderer, gameCamera);
+		ÎÀÐÇ->draw(renderer, gameCamera);
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
 		SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
@@ -180,18 +195,21 @@ public:
 
 	manager texManager;
 	camera gameCamera;
-	galaxy* Ì«Ñô;
+	galaxy *Ì«Ñô;
 	galaxy *ÐÐÐÇ;
-	galaxy* ÎÀÐÇ;
+	galaxy *ÎÀÐÇ;
+	std::vector<galaxy*> galaxies;
 
 	Uint64 lastTime;
 
 	bool loop = false;
 	~gameInstance()
-	{	
+	{
 		delete ÐÐÐÇ;
 		delete Ì«Ñô;
 		delete ÎÀÐÇ;
+		for (auto& s : galaxies)
+			delete s;
 	}
 };
 
