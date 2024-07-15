@@ -128,6 +128,9 @@ public:
 		Ì«Ñô->contactProcess(starTree, time);
 		ÐÐÐÇ->contactProcess(starTree, time);
 		ÎÀÐÇ->contactProcess(starTree, time);
+		Ì«Ñô->gravitationProcess(starTree);
+		ÐÐÐÇ->gravitationProcess(starTree);
+		ÎÀÐÇ->gravitationProcess(starTree);
 
 		Ì«Ñô->PhysicStep(time);
 		ÐÐÐÇ->PhysicStep(time);

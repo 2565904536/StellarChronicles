@@ -123,6 +123,21 @@ void galaxy::applyAccleration(const vec2& acc)
 
 }
 
+void galaxy::applyImpulse(const vec2& imp)
+{
+	if (owner)
+	{
+		vec2 rv = { SDL_cosf(orbitAng),SDL_sinf(orbitAng) };
+		auto impr = imp * rv;
+		auto impt = rv.x * imp.y - rv.y * imp.x;
+		orbitAngVel += impt / (orbitRadius * mainStar.mass);
+	}
+	else
+	{
+		Velocity += imp/mainStar.mass;
+	}
+}
+
 void galaxy::update()
 {
 }
@@ -157,8 +172,40 @@ void galaxy::contactProcess(QuadTree &tree, float time)
 		//处理碰撞后果
 		auto ang = pos.angle();
 		auto acc=vec2{SDL_cosf(ang),SDL_sinf(ang)};
-		applyAccleration(acc*d/time);
+		applyImpulse(acc * (0.2*mainStar.mass * d / time));
 	}
+}
+
+void galaxy::gravitationProcess(QuadTree& tree)
+{	
+	auto  arroundGalaxies = tree.query({ Position.x,Position.y,10 * mainStar.radius, 10 * mainStar.radius });
+	for(auto&s:arroundGalaxies)
+	{
+		if (s == this||isGalaxyInSatellites(s))
+			continue;
+		auto pos = s->Position - Position;
+		auto d = pos.length();
+		applyAccleration(pos * (0.1*s->mainStar.mass / (d * d * d)));
+	}
+}
+
+bool galaxy::isGalaxyInSatellites(galaxy* subgalaxy)
+{
+	// 首先检查当前galaxy的直接卫星  
+	if (std::find(satellites.begin(), satellites.end(), subgalaxy) != satellites.end()) {
+		return true; // 如果找到了，直接返回true  
+	}
+
+	// 如果当前galaxy没有直接卫星，或者subgalaxy不是直接卫星之一  
+	// 则递归检查所有直接卫星  
+	for (auto& s : satellites) {
+		if (s->isGalaxyInSatellites(subgalaxy)) {
+			return true; // 如果任一直接卫星包含subgalaxy，则返回true  
+		}
+	}
+
+	// 如果没有任何直接卫星包含subgalaxy，则返回false  
+	return false;
 }
 
 vec2 galaxy::getPosition() const
