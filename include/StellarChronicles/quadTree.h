@@ -81,7 +81,7 @@ private:
 		float BlowY = B.centerY - B.halfH;
 		float BupY = B.centerY + B.halfH;
 
-		return !((ArightX < BleftX || AleftX > BrightX) && (AupY < BlowY || AlowY > BupY));
+		return !((ArightX < BleftX || AleftX > BrightX) || (AupY < BlowY || AlowY > BupY));
 	}
 	Rect _range;
 	std::vector<Entity*> _contain;
@@ -109,7 +109,7 @@ private:
 		for (int i = 0; i < 4; i++)
 		{
 			this->_children.emplace_back(subDivideRange[i]);
-			this->_children[i]._depth++;
+			this->_children[i]._depth=this->_depth+1;
 		}
 
 		for (const auto& entity : this->_contain)
