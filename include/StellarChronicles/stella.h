@@ -44,9 +44,12 @@ public:
 	void linkSubGalaxy(galaxy* subGalaxy);
 	void removeSubGalaxy(galaxy* subGalaxy);
 	void applyAccleration(const vec2& acc);
+	void applyImpulse(const vec2& imp);
 	void update();
 	void draw(SDL_Renderer *renderer, camera &camera);
 	void contactProcess(QuadTree &tree,float time);
+	void gravitationProcess(QuadTree& tree);
+	bool isGalaxyInSatellites(galaxy* subgalaxy);
 	vec2 getPosition() const;
 	vec2 Velocity;
 private:
