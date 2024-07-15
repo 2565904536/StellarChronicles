@@ -66,8 +66,8 @@ public:
     bool isEntityInRange(const Entity&, const Rect&);
 private:
 	int _depth = 0;
-	int _MaxDepth = 5;
-	int _MaxCapacity = 3;
+	int _MaxDepth = 8;
+	int _MaxCapacity = 5;
 
 	bool isRangeInRange(const Rect& A, const Rect& B)
 	{

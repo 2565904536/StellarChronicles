@@ -45,7 +45,7 @@ public:
 		Ì«Ñô = new galaxy{{-3.0f, 0.0f}, 5.0f, 1.0f, ÐÐÐÇÌùÍ¼1};
 		ÐÐÐÇ = new galaxy{{0.0f, 0.0f}, 2.0f, 0.5f, ÐÐÐÇÌùÍ¼1};
 		ÎÀÐÇ = new galaxy{{5.0f, 0.0f}, 0.5f, 0.2f, ÐÐÐÇÌùÍ¼2};
-		for (int i = 0; i < 500;i++)
+		for (int i = 0; i < 100;i++)
 		{
 			galaxies.push_back(new galaxy{
 				vec2{20.0f + 10.0f * random(gen), 20.0f + 10.0f * random(gen)},
@@ -57,6 +57,7 @@ public:
 			ÐÐÐÇ->linkSubGalaxy(ÎÀÐÇ);
 		Ì«Ñô->linkSubGalaxy(ÐÐÐÇ);
 		gameCamera = {vec2_zero, 1.0f, 0.0f};
+		gameCamera.scale = 0.1;
 	}
 	bool debugBreak = false;
 	int cameraindex = 0;
@@ -125,7 +126,7 @@ public:
 		if (keyboardState[SDL_SCANCODE_E])
 			Torque += 1.0f;
 
-		QuadTree starTree{{50.0f, 50.0f,50.0f, 50.0f}};
+		QuadTree starTree{{0.0f,0.0f,1000.0f,1000.0f}};
 		starTree.insert(*Ì«Ñô);
 		starTree.insert(*ÐÐÐÇ);
 		starTree.insert(*ÎÀÐÇ);
@@ -145,14 +146,11 @@ public:
 		for(auto&s:galaxies)
 			s->gravitationProcess(starTree);
 
-		//Ì«Ñô->PhysicStep(time);
-		//ÐÐÐÇ->PhysicStep(time);
-		//ÎÀÐÇ->PhysicStep(time);
-		//for(auto&s:galaxies)
-		//	s->PhysicStep(time);
-		// Ì«Ñô->update();
-		// ÐÐÐÇ->update();
-		// ÎÀÐÇ->update();
+		Ì«Ñô->PhysicStep(time);
+		ÐÐÐÇ->PhysicStep(time);
+		ÎÀÐÇ->PhysicStep(time);
+		for(auto&s:galaxies)
+			s->PhysicStep(time);
 
 		switch (cameraindex)
 		{
