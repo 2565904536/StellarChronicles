@@ -19,7 +19,7 @@ bool QuadTree::isEntityInRange(const galaxy &galaxy, const Rect &rect)
 	float maxX = x + r;
 	float maxY = y + r;
 
-	return !(minX > rect.centerX + rect.halfW || maxX < rect.centerX - rect.halfW && minY > rect.centerY + rect.halfH || maxY < rect.centerY - rect.halfH);
+	return !(minX > rect.centerX + rect.halfW || maxX < rect.centerX - rect.halfW || minY > rect.centerY + rect.halfH || maxY < rect.centerY - rect.halfH);
 }
 
 const vec2 vec2_zero{0.0f, 0.0f};
@@ -45,7 +45,7 @@ public:
 		Ì«Ñô = new galaxy{{-3.0f, 0.0f}, 5.0f, 1.0f, ÐÐÐÇÌùÍ¼1};
 		ÐÐÐÇ = new galaxy{{0.0f, 0.0f}, 2.0f, 0.5f, ÐÐÐÇÌùÍ¼1};
 		ÎÀÐÇ = new galaxy{{5.0f, 0.0f}, 0.5f, 0.2f, ÐÐÐÇÌùÍ¼2};
-		for (int i = 0; i < 1;i++)
+		for (int i = 0; i < 500;i++)
 		{
 			galaxies.push_back(new galaxy{
 				vec2{20.0f + 10.0f * random(gen), 20.0f + 10.0f * random(gen)},
@@ -127,10 +127,10 @@ public:
 
 		QuadTree starTree{{50.0f, 50.0f,50.0f, 50.0f}};
 		starTree.insert(*Ì«Ñô);
-		//starTree.insert(*ÐÐÐÇ);
-		//starTree.insert(*ÎÀÐÇ);
-		//for(auto&s:galaxies)
-		//	starTree.insert(*s);
+		starTree.insert(*ÐÐÐÇ);
+		starTree.insert(*ÎÀÐÇ);
+		for(auto&s:galaxies)
+			starTree.insert(*s);
 		auto aroundGalaxies = starTree.query({gameCamera.position.x, gameCamera.position.y, 15.0f, 15.0f});
 		static float time = 1 / 60.0f;
 		Ì«Ñô->applyAccleration(force);
@@ -145,11 +145,11 @@ public:
 		for(auto&s:galaxies)
 			s->gravitationProcess(starTree);
 
-		Ì«Ñô->PhysicStep(time);
-		ÐÐÐÇ->PhysicStep(time);
-		ÎÀÐÇ->PhysicStep(time);
-		for(auto&s:galaxies)
-			s->PhysicStep(time);
+		//Ì«Ñô->PhysicStep(time);
+		//ÐÐÐÇ->PhysicStep(time);
+		//ÎÀÐÇ->PhysicStep(time);
+		//for(auto&s:galaxies)
+		//	s->PhysicStep(time);
 		// Ì«Ñô->update();
 		// ÐÐÐÇ->update();
 		// ÎÀÐÇ->update();
@@ -182,6 +182,8 @@ public:
 		ÐÐÐÇ->draw(renderer, gameCamera);
 
 		ÎÀÐÇ->draw(renderer, gameCamera);
+		for (auto& s : galaxies)
+			s->draw(renderer, gameCamera);
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
 		SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
