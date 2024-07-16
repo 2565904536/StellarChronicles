@@ -7,46 +7,6 @@ galaxy::galaxy(vec2 position, float mass, float radius, sprites &sprite)
 	mainStar.sprite.scale = radius * 100 / sprite.size.x;
 }
 
-
-// void galaxy::destroy()
-//{
-//	if (state == State::ALIVE)
-//	{
-//	//body销毁后，触发endcontact,其他galaxy移除aroundGalaxies中的此galaxy
-//	//所有连接body的关节也会被销毁
-//	this->mainStella.body->GetWorld()->DestroyBody(this->mainStella.body);
-//	if (this->belongsTo)
-//	{
-//		std::erase(this->belongsTo->satellites, this);
-//		this->belongsTo = nullptr;
-//	}
-//	//解放卫星系，让他们独立
-//	for (auto& g : satellites)
-//	{
-//		g->belongsTo = nullptr;
-//	}
-//	//清空卫星系
-//	satellites.clear();
-//	state = State::DESTROYED;
-//	visible = false;
-//	}
-// 
-//
-// b2Vec2 galaxy::calculateGravitationalAcceleration(float gravitationalConstant)
-//{
-//	b2Vec2 acc = { 0.0f, 0.0f };
-//	for (auto& a : aroundGalaxies)
-//	{
-//		auto mass = a->mainStella.body->GetMass();
-//		auto vec = a->mainStella.body->GetPosition() - this->mainStella.body->GetPosition();
-//		auto distance = vec.Normalize();
-//		if (distance < b2_epsilon)
-//			continue;
-//		acc += gravitationalConstant * mass / (distance * distance) * vec;
-//	}
-//	return acc;
-// }
-//
 void galaxy::PhysicStep(float time)
 {
 	if (!owner)
@@ -106,6 +66,13 @@ void galaxy::removeSubGalaxy(galaxy *subGalaxy)
 	subGalaxy->Velocity = vec2{ -SDL_sinf(subGalaxy->orbitAng),SDL_cosf(subGalaxy->orbitAng) }*(subGalaxy->orbitRadius * subGalaxy->orbitAngVel);
 }
 
+void galaxy::leaveGalaxy()
+{
+	if (owner)
+		owner->removeSubGalaxy(this);
+	owner = nullptr;
+}
+
 void galaxy::applyAccleration(const vec2& acc)
 {
 	if (owner)
@@ -138,6 +105,20 @@ void galaxy::applyImpulse(const vec2& imp)
 	}
 }
 
+void galaxy::applyDisplace(const vec2& disp)
+{
+	if (owner)
+	{
+		auto xt = SDL_cosf(orbitAng) * disp.y - SDL_sinf(orbitAng) * disp.x;
+		orbitAng += xt / orbitRadius;
+	}
+	else
+	{
+		Position += disp;
+	}
+		
+}
+
 void galaxy::update()
 {
 }
@@ -154,7 +135,7 @@ void galaxy::draw(SDL_Renderer *renderer, camera &camera)
 	sprite.draw(renderer, pos2, camera.scale);
 }
 
-void galaxy::contactProcess(QuadTree &tree, float time)
+void galaxy::contactProcess(QuadTree &tree)
 {
 	//得到周围的galaxies
 	auto arroundGalaxies = tree.query({ Position.x,Position.y,2*mainStar.radius, 2*mainStar.radius });
@@ -170,9 +151,57 @@ void galaxy::contactProcess(QuadTree &tree, float time)
 		if (d>0)
 			continue;
 		//处理碰撞后果
-		auto ang = pos.angle();
-		auto acc=vec2{SDL_cosf(ang),SDL_sinf(ang)};
-		applyImpulse(acc * (0.2*mainStar.mass * d / time));
+		auto dv = s->getVelocity() - getVelocity();
+		auto &m1 = mainStar.mass;
+		auto &m2 = s->mainStar.mass;
+		auto&& e = 0.5;
+		auto imp = dv * (m1 * m2 / (m1 + m2) * (1 + e));
+		applyImpulse(imp);
+		applyDisplace(pos * (m2 *d/ (m1 + m2) / le));
+		switch (type)
+		{
+		case galaxy::Type::asiderite:
+			switch (s->type)
+			{
+			case galaxy::Type::asiderite:
+				break;
+			case galaxy::Type::planet:
+				break;
+			case galaxy::Type::star:
+				break;
+			default:
+				break;
+			}
+			break;
+		case galaxy::Type::planet:
+			switch (s->type)
+			{
+			case galaxy::Type::asiderite:
+				break;
+			case galaxy::Type::planet:
+				break;
+			case galaxy::Type::star:
+				break;
+			default:
+				break;
+			}
+			break;
+		case galaxy::Type::star:
+			switch (s->type)
+			{
+			case galaxy::Type::asiderite:
+				break;
+			case galaxy::Type::planet:
+				break;
+			case galaxy::Type::star:
+				break;
+			default:
+				break;
+			}
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -181,11 +210,11 @@ void galaxy::gravitationProcess(QuadTree& tree)
 	auto  arroundGalaxies = tree.query({ Position.x,Position.y,10 * mainStar.radius, 10 * mainStar.radius });
 	for(auto&s:arroundGalaxies)
 	{
-		if (s == this||isGalaxyInSatellites(s))
+		if (s == this||s->type==Type::asiderite||isGalaxyInSatellites(s))
 			continue;
 		auto pos = s->Position - Position;
-		auto d = pos.length();
-		applyAccleration(pos * (0.1*s->mainStar.mass / (d * d * d)));
+		auto d = pos.lengthSqure();
+		applyAccleration(pos * (0.1*s->mainStar.mass / d ));
 	}
 }
 
@@ -210,7 +239,22 @@ bool galaxy::isGalaxyInSatellites(galaxy* subgalaxy)
 
 vec2 galaxy::getPosition() const
 {
+	if (owner)
+		return owner->getPosition() + vec2{ SDL_cosf(orbitAng),SDL_sinf(orbitAng) }*(orbitRadius);
 	return Position;
+}
+
+vec2 galaxy::getVelocity() const
+{
+	if (owner)
+		return owner->getVelocity() + vec2{-SDL_sinf(orbitAng),SDL_cosf(orbitAng) }*(orbitRadius * orbitAngVel);
+	return Velocity;
+}
+
+void galaxy::telePosition(const vec2& location)
+{
+	leaveGalaxy();
+	Position = location;
 }
 
 stella::stella(float mass, float radius, sprites &sprite, galaxy *owner)

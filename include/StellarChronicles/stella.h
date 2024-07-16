@@ -43,17 +43,29 @@ public:
 	void PhysicStep(float time);
 	void linkSubGalaxy(galaxy* subGalaxy);
 	void removeSubGalaxy(galaxy* subGalaxy);
+	void leaveGalaxy();
 	void applyAccleration(const vec2& acc);
 	void applyImpulse(const vec2& imp);
+	void applyDisplace(const vec2& disp);
 	void update();
 	void draw(SDL_Renderer *renderer, camera &camera);
-	void contactProcess(QuadTree &tree,float time);
+	void contactProcess(QuadTree &tree);
 	void gravitationProcess(QuadTree& tree);
 	bool isGalaxyInSatellites(galaxy* subgalaxy);
 	vec2 getPosition() const;
-	vec2 Velocity;
+	vec2 getVelocity() const;
+	void telePosition(const vec2 &location);
+	enum class Type
+	{
+		asiderite,
+		planet,
+		star
+	} type = Type::asiderite;
 private:
 	vec2 Position;
+	vec2 Velocity;
 	vec2 Accleration;
+	bool isActive = true;
+	int life = 2;
 };
 
