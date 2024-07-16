@@ -9,19 +9,6 @@
 #include "StellarChronicles/quadTree.h"
 #include <random>
 
-bool QuadTree::isEntityInRange(const galaxy &galaxy, const Rect &rect)
-{
-	auto &x = galaxy.Position.x;
-	auto &y = galaxy.Position.y;
-	auto &r = galaxy.mainStar.radius;
-	float minX = x - r;
-	float minY = y - r;
-	float maxX = x + r;
-	float maxY = y + r;
-
-	return !(minX > rect.centerX + rect.halfW || maxX < rect.centerX - rect.halfW || minY > rect.centerY + rect.halfH || maxY < rect.centerY - rect.halfH);
-}
-
 const vec2 vec2_zero{0.0f, 0.0f};
 Uint64 frequency = SDL_GetPerformanceFrequency();
 std::random_device rd;
