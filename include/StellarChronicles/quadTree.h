@@ -18,7 +18,7 @@ public:
 
 	explicit QuadTree(Rect range) : _range(range) {}
 	~QuadTree() = default;
-	void insert(Entity& entity)
+	void insert(Entity &entity)
 	{
 		if (!isEntityInRange(entity, _range))
 		{
@@ -36,14 +36,14 @@ public:
 		}
 		else
 		{
-			for (auto& child : this->_children)
+			for (auto &child : this->_children)
 			{
 				child.insert(entity);
 			}
 		}
 	}
 
-	void remove(Entity& entity)
+	void remove(Entity &entity)
 	{
 		if (this->isLeaf())
 		{
@@ -51,26 +51,27 @@ public:
 		}
 		else
 		{
-			for (auto& child : this->_children)
+			for (auto &child : this->_children)
 			{
 				child.remove(entity);
 			}
 		}
 	}
 
-	std::vector<Entity*> query(const Rect& range)
+	std::vector<Entity *> query(const Rect &range)
 	{
-		std::vector<Entity*> entitiesInRange;
+		std::vector<Entity *> entitiesInRange;
 		this->search(range, entitiesInRange);
 		return entitiesInRange;
 	}
-    bool isEntityInRange(const Entity&, const Rect&);
+	bool isEntityInRange(const Entity &, const Rect &);
+
 private:
 	int _depth = 0;
 	int _MaxDepth = 8;
 	int _MaxCapacity = 5;
 
-	bool isRangeInRange(const Rect& A, const Rect& B)
+	bool isRangeInRange(const Rect &A, const Rect &B)
 	{
 		float AleftX = A.centerX - A.halfW;
 		float ArightX = A.centerX + A.halfW;
@@ -85,15 +86,15 @@ private:
 		return !((ArightX < BleftX || AleftX > BrightX) || (AupY < BlowY || AlowY > BupY));
 	}
 	Rect _range;
-	std::vector<Entity*> _contain;
+	std::vector<Entity *> _contain;
 	std::vector<QuadTree> _children;
-	//todo:
-	// 用std::forward_list代替std::vector
-	//std::forward_list<Entity*> list_contain;
-	//void fun()
+	// todo:
+	//  用std::forward_list代替std::vector
+	// std::forward_list<Entity*> list_contain;
+	// void fun()
 	//{
 	//	list_contain.
-	//}
+	// }
 
 	inline bool isLeaf()
 	{
@@ -108,19 +109,19 @@ private:
 		}
 
 		Rect subDivideRange[4] =
-		{
-			Rect{_range.centerX + _range.halfW * 0.5f, _range.centerY + _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
-			Rect{_range.centerX - _range.halfW * 0.5f, _range.centerY + _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
-			Rect{_range.centerX - _range.halfW * 0.5f, _range.centerY - _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
-			Rect{_range.centerX + _range.halfW * 0.5f, _range.centerY - _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f} };
+			{
+				Rect{_range.centerX + _range.halfW * 0.5f, _range.centerY + _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
+				Rect{_range.centerX - _range.halfW * 0.5f, _range.centerY + _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
+				Rect{_range.centerX - _range.halfW * 0.5f, _range.centerY - _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f},
+				Rect{_range.centerX + _range.halfW * 0.5f, _range.centerY - _range.halfH * 0.5f, _range.halfW * 0.5f, _range.halfH * 0.5f}};
 
 		for (int i = 0; i < 4; i++)
 		{
 			this->_children.emplace_back(subDivideRange[i]);
-			this->_children[i]._depth=this->_depth+1;
+			this->_children[i]._depth = this->_depth + 1;
 		}
 
-		for (const auto& entity : this->_contain)
+		for (const auto &entity : this->_contain)
 		{
 			this->_children[0].insert(*entity);
 			this->_children[1].insert(*entity);
@@ -131,7 +132,7 @@ private:
 		this->_contain.clear();
 	}
 
-	void search(const Rect& range, std::vector<Entity*>& entitiesInRange)
+	void search(const Rect &range, std::vector<Entity *> &entitiesInRange)
 	{
 		if (!isRangeInRange(range, _range))
 		{
@@ -140,7 +141,7 @@ private:
 
 		if (this->isLeaf())
 		{
-			for (const auto& entity : this->_contain)
+			for (const auto &entity : this->_contain)
 			{
 				if (isEntityInRange(*entity, range))
 				{
@@ -150,7 +151,7 @@ private:
 		}
 		else
 		{
-			for (auto& child : this->_children)
+			for (auto &child : this->_children)
 			{
 				child.search(range, entitiesInRange);
 			}
@@ -161,5 +162,3 @@ private:
 #undef Entity
 
 #endif // !Entity
-
-

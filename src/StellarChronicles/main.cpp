@@ -56,8 +56,9 @@ public:
 				ÔÉÊ¯ÌùÍ¼});
 		}
 		// ĞĞĞÇ->Velocity = { 0.0f,1.0f };
-		ĞĞĞÇ->linkSubGalaxy(ÎÀĞÇ);
+		// ĞĞĞÇ->linkSubGalaxy(ÎÀĞÇ);
 		Ì«Ñô->linkSubGalaxy(ĞĞĞÇ);
+		ÎÀĞÇ->isPlayer = true;
 		gameCamera = {vec2_zero, 1.0f, 0.0f};
 		gameCamera.scale = 1.0f;
 	}
@@ -128,15 +129,16 @@ public:
 		if (keyboardState[SDL_SCANCODE_E])
 			Torque += 5.0f;
 
-		QuadTree starTree{{0.0f, 0.0f, 1000.0f, 1000.0f}};
+		QuadTree starTree{{gameCamera.position.x, gameCamera.position.y, 1000.0f, 1000.0f}};
 		starTree.insert(*Ì«Ñô);
 		starTree.insert(*ĞĞĞÇ);
 		starTree.insert(*ÎÀĞÇ);
 		for (auto &s : galaxies)
-			starTree.insert(*s);
-		auto aroundGalaxies = starTree.query({gameCamera.position.x, gameCamera.position.y, 15.0f, 15.0f});
-		static float time = 1 / 60.0f;
-		Ì«Ñô->applyAccleration(force);
+			if (s->state == galaxy::State::Alive)
+				starTree.insert(*s);
+		auto aroundGalaxies = starTree.query({gameCamera.position.x, gameCamera.position.y, 32.0f / gameCamera.scale, 18.0f / gameCamera.scale});
+		static float time = 1 / 30.0f;
+		ÎÀĞÇ->applyAccleration(force / 5);
 		Ì«Ñô->contactProcess(starTree);
 		ĞĞĞÇ->contactProcess(starTree);
 		ÎÀĞÇ->contactProcess(starTree);
@@ -172,6 +174,12 @@ public:
 			cameraindex = 0;
 			break;
 		}
+		for (auto &s : aroundGalaxies)
+			if (s->state == galaxy::State::Dead)
+			{
+				s->destroy();
+				pool += s;
+			}
 
 		// Çå¿ÕÆÁÄ»
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
@@ -182,12 +190,12 @@ public:
 		ĞĞĞÇ->draw(renderer, gameCamera);
 
 		ÎÀĞÇ->draw(renderer, gameCamera);
-		for (auto &s : galaxies)
+		for (auto &s : aroundGalaxies)
 			s->draw(renderer, gameCamera);
-		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
-		SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
-		// ÏÔÊ¾äÖÈ¾ÄÚÈİ
+		// SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		// SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
+		// SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
+		//  ÏÔÊ¾äÖÈ¾ÄÚÈİ
 		SDL_RenderPresent(renderer);
 		std::print("\rfps:{:.4f}", fps);
 		// °´Ğ¡¼üÅÌ0ÖĞ¶Ï³ÌĞò
