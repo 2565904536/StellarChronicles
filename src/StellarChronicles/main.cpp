@@ -39,25 +39,27 @@ public:
 		texManager.LoadTex(renderer, "planet0.png", "01");
 		texManager.LoadTex(renderer, "planet1.png", "02");
 		texManager.LoadTex(renderer, "0001.png", "03");
-		sprites ÐÐÐÇÌùÍ¼1(texManager.GetTex("01"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		sprites ÐÐÐÇÌùÍ¼2(texManager.GetTex("02"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		sprites Ì«ÑôÌùÍ¼(texManager.GetTex("03"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		Ì«Ñô = new galaxy{{-3.0f, 0.0f}, 5.0f, 1.0f, ÐÐÐÇÌùÍ¼1};
-		ÐÐÐÇ = new galaxy{{0.0f, 0.0f}, 2.0f, 0.5f, ÐÐÐÇÌùÍ¼1};
-		ÎÀÐÇ = new galaxy{{5.0f, 0.0f}, 0.5f, 0.2f, ÐÐÐÇÌùÍ¼2};
-		for (int i = 0; i < 100;i++)
+		sprites ÐÐÐÇÌùÍ¼(texManager.GetTex("01"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		sprites Ì«ÑôÌùÍ¼(texManager.GetTex("02"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		sprites ÔÉÊ¯ÌùÍ¼(texManager.GetTex("03"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
+		Ì«Ñô = new galaxy{{-3.0f, 0.0f}, 30.0f, 1.0f, Ì«ÑôÌùÍ¼};
+		ÐÐÐÇ = new galaxy{{0.0f, 0.0f}, 2.0f, 0.5f, ÐÐÐÇÌùÍ¼};
+		ÎÀÐÇ = new galaxy{{5.0f, 0.0f}, 0.5f, 0.2f, ÔÉÊ¯ÌùÍ¼};
+		Ì«Ñô->type = galaxy::Type::star;
+		ÐÐÐÇ->type = galaxy::Type::planet;
+		for (int i = 0; i < 500; i++)
 		{
 			galaxies.push_back(new galaxy{
-				vec2{20.0f + 10.0f * random(gen), 20.0f + 10.0f * random(gen)},
+				vec2{20.0f + 112.0f * random(gen), 20.0f + 112.0f * random(gen)},
 				0.5f,
-				0.2f + 0.5f * random(gen),
-				ÐÐÐÇÌùÍ¼2});
+				0.3f + 0.2f * random(gen),
+				ÔÉÊ¯ÌùÍ¼});
 		}
-			// ÐÐÐÇ->Velocity = { 0.0f,1.0f };
-			ÐÐÐÇ->linkSubGalaxy(ÎÀÐÇ);
+		// ÐÐÐÇ->Velocity = { 0.0f,1.0f };
+		ÐÐÐÇ->linkSubGalaxy(ÎÀÐÇ);
 		Ì«Ñô->linkSubGalaxy(ÐÐÐÇ);
 		gameCamera = {vec2_zero, 1.0f, 0.0f};
-		gameCamera.scale = 0.1;
+		gameCamera.scale = 1.0f;
 	}
 	bool debugBreak = false;
 	int cameraindex = 0;
@@ -113,43 +115,43 @@ public:
 		float Torque = 0.0f;
 		if (keyboardState[SDL_SCANCODE_A])
 		{
-			force += {-1.0f, 0.0f};
+			force += {-5.0f, 0.0f};
 		}
 		if (keyboardState[SDL_SCANCODE_S])
-			force += {0.0f, 1.0f};
+			force += {0.0f, 5.0f};
 		if (keyboardState[SDL_SCANCODE_D])
-			force += {1.0f, 0.0f};
+			force += {5.0f, 0.0f};
 		if (keyboardState[SDL_SCANCODE_W])
-			force += {0.0f, -1.0f};
+			force += {0.0f, -5.0f};
 		if (keyboardState[SDL_SCANCODE_Q])
-			Torque += -1.0f;
+			Torque += -5.0f;
 		if (keyboardState[SDL_SCANCODE_E])
-			Torque += 1.0f;
+			Torque += 5.0f;
 
-		QuadTree starTree{{0.0f,0.0f,1000.0f,1000.0f}};
+		QuadTree starTree{{0.0f, 0.0f, 1000.0f, 1000.0f}};
 		starTree.insert(*Ì«Ñô);
 		starTree.insert(*ÐÐÐÇ);
 		starTree.insert(*ÎÀÐÇ);
-		for(auto&s:galaxies)
+		for (auto &s : galaxies)
 			starTree.insert(*s);
 		auto aroundGalaxies = starTree.query({gameCamera.position.x, gameCamera.position.y, 15.0f, 15.0f});
 		static float time = 1 / 60.0f;
 		Ì«Ñô->applyAccleration(force);
-		Ì«Ñô->contactProcess(starTree, time);
-		ÐÐÐÇ->contactProcess(starTree, time);
-		ÎÀÐÇ->contactProcess(starTree, time);
-		for(auto&s:galaxies)
-			s->contactProcess(starTree, time);
+		Ì«Ñô->contactProcess(starTree);
+		ÐÐÐÇ->contactProcess(starTree);
+		ÎÀÐÇ->contactProcess(starTree);
+		for (auto &s : galaxies)
+			s->contactProcess(starTree);
 		Ì«Ñô->gravitationProcess(starTree);
 		ÐÐÐÇ->gravitationProcess(starTree);
 		ÎÀÐÇ->gravitationProcess(starTree);
-		for(auto&s:galaxies)
+		for (auto &s : galaxies)
 			s->gravitationProcess(starTree);
 
 		Ì«Ñô->PhysicStep(time);
 		ÐÐÐÇ->PhysicStep(time);
 		ÎÀÐÇ->PhysicStep(time);
-		for(auto&s:galaxies)
+		for (auto &s : galaxies)
 			s->PhysicStep(time);
 
 		switch (cameraindex)
@@ -180,7 +182,7 @@ public:
 		ÐÐÐÇ->draw(renderer, gameCamera);
 
 		ÎÀÐÇ->draw(renderer, gameCamera);
-		for (auto& s : galaxies)
+		for (auto &s : galaxies)
 			s->draw(renderer, gameCamera);
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
@@ -198,8 +200,8 @@ public:
 	galaxy *Ì«Ñô;
 	galaxy *ÐÐÐÇ;
 	galaxy *ÎÀÐÇ;
-	std::vector<galaxy*> galaxies;
-
+	std::vector<galaxy *> galaxies;
+	objectPool pool;
 	Uint64 lastTime;
 
 	bool loop = false;
@@ -208,7 +210,7 @@ public:
 		delete ÐÐÐÇ;
 		delete Ì«Ñô;
 		delete ÎÀÐÇ;
-		for (auto& s : galaxies)
+		for (auto &s : galaxies)
 			delete s;
 	}
 };

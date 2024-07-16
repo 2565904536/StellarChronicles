@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <forward_list>
 #include "StellarChronicles/stella.h"
 
 #ifndef Entity
@@ -86,6 +87,13 @@ private:
 	Rect _range;
 	std::vector<Entity*> _contain;
 	std::vector<QuadTree> _children;
+	//todo:
+	// ÓÃstd::forward_list´úÌæstd::vector
+	//std::forward_list<Entity*> list_contain;
+	//void fun()
+	//{
+	//	list_contain.
+	//}
 
 	inline bool isLeaf()
 	{

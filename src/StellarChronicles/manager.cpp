@@ -21,3 +21,28 @@ SDL_Texture *manager::GetTex(std::string_view Name)
 {
 	return textures.at(Name);
 }
+
+objectPool::~objectPool()
+{
+}
+
+galaxy *objectPool::getObj()
+{
+	galaxy *obj = pool.front();
+	pool.pop();
+	return obj;
+}
+
+void objectPool::recircleObj(galaxy *obj)
+{
+	if (!obj)
+		return;
+	pool.push(obj);
+}
+
+void objectPool::operator+=(galaxy* obj)
+{
+	if (!obj)
+		return;
+	pool.push(obj);
+}
