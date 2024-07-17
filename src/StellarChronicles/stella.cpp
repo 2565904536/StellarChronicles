@@ -159,6 +159,7 @@ void galaxy::contactProcess(QuadTree &tree)
 		auto imp = dv * (m1 * m2 / (m1 + m2) * (1 + e));
 		applyImpulse(imp);
 		applyDisplace(pos * (m2 * d / (m1 + m2) / le));
+		futlife = life;
 		switch (type)
 		{
 		case galaxy::Type::asiderite:
@@ -167,41 +168,54 @@ void galaxy::contactProcess(QuadTree &tree)
 			case galaxy::Type::asiderite:
 				if (dvlen > 2.0f)
 				{
-					life += s->life;
-					s->life = 0;
+					if (isPlayer)
+					{
+						futlife += s->life;
+						break;
+					}
 					if (s->isPlayer)
 					{
-						std::swap(life, s->life);
+						futlife = 0;
+						break;
+					}
+					if (life >= s->life)
+					{
+						futlife += s->life;
+						s->state = State::Dead;
 					}
 				}
 				break;
 			case galaxy::Type::planet:
-				life = 0;
+				futlife = 0;
 
 				break;
 			case galaxy::Type::star:
-				life = 0;
+				futlife = 0;
 				break;
 			default:
 				break;
 			}
+			if (futlife <= 0)
+				state = State::Dead;
 			break;
 		case galaxy::Type::planet:
 			switch (s->type)
 			{
 			case galaxy::Type::asiderite:
-				life -= s->life;
+				futlife -= s->life;
 
 				break;
 			case galaxy::Type::planet:
-				life -= 5;
+				futlife -= 5;
 				break;
 			case galaxy::Type::star:
-				life = 0;
+				futlife = 0;
 				break;
 			default:
 				break;
 			}
+			if (futlife <= 70)
+				state = State::Dead;
 			break;
 		case galaxy::Type::star:
 			switch (s->type)
@@ -209,21 +223,24 @@ void galaxy::contactProcess(QuadTree &tree)
 			case galaxy::Type::asiderite:
 				break;
 			case galaxy::Type::planet:
-				life -= s->life;
+				futlife -= s->life;
 				break;
 			case galaxy::Type::star:
-				life -= 100;
+				futlife -= 100;
 				break;
 			default:
 				break;
 			}
+			if (futlife <= 700)
+				state = State::Dead;
 			break;
 		default:
 			break;
 		}
 	}
-	if (life <= 0)
-		state = State::Dead;
+	if (isPlayer)
+		std::print("life={} futlife={} \n", life, futlife);
+
 }
 
 void galaxy::gravitationProcess(QuadTree &tree)
@@ -233,7 +250,7 @@ void galaxy::gravitationProcess(QuadTree &tree)
 	auto arroundGalaxies = tree.query({Position.x, Position.y, 10 * mainStar.radius, 10 * mainStar.radius});
 	for (auto &s : arroundGalaxies)
 	{
-		if (s == this || /* s->type == Type::asiderite||*/ s->state != State::Alive || isGalaxyInSatellites(s))
+		if (s == this ||  s->type == Type::asiderite|| s->state != State::Alive || isGalaxyInSatellites(s))
 			continue;
 		auto pos = s->Position - Position;
 		auto d = pos.lengthSqure();
@@ -275,6 +292,33 @@ vec2 galaxy::getVelocity() const
 	if (owner)
 		return owner->getVelocity() + vec2{-SDL_sinf(orbitAng), SDL_cosf(orbitAng)} * (orbitRadius * orbitAngVel);
 	return Velocity;
+}
+
+void galaxy::upgrade()
+{
+	switch (type)
+	{
+	case galaxy::Type::asiderite:
+		type = Type::planet;
+		life = 100;
+		mainStar.mass = 10.0f;
+		mainStar.radius = 4.0f;
+		mainStar.sprite.scale *= 4.0f;
+		mainStar.sprite.nextFrame();
+		break;
+	case galaxy::Type::planet:
+		type = Type::star;
+		life = 1000;
+		mainStar.mass = 100.0f;
+		mainStar.radius = 15.0f;
+		mainStar.sprite.scale *= 15.0f / 4.0f;
+		mainStar.sprite.nextFrame();
+		break;
+	case galaxy::Type::star:
+		break;
+	default:
+		break;
+	}
 }
 
 galaxy *galaxy::destroy()
