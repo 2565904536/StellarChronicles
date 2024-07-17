@@ -34,7 +34,7 @@ public:
 		ÎÀÐÇ = new galaxy{{5.0f, 0.0f}, 0.5f, 0.2f, ÔÉÊ¯ÌùÍ¼};
 		Ì«Ñô->type = galaxy::Type::star;
 		ÐÐÐÇ->type = galaxy::Type::planet;
-		for (int i = 0; i < 500; i++)
+		for (int i = 0; i < 5000; i++)
 		{
 			galaxies.push_back(new galaxy{
 				vec2{20.0f + 112.0f * random(gen), 20.0f + 112.0f * random(gen)},
