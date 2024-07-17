@@ -28,7 +28,7 @@ class galaxy
 public:
 	galaxy(vec2 position, float mass, float radius, sprites &sprite);
 	friend class QuadTree;
-	// ×÷Îª×ÓÐÇÏµµÄÊôÐÔ
+	// ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	galaxy *owner = nullptr;
 	float orbitRadius = 0.0f;
 	float orbitAng = 0.0f;
@@ -53,7 +53,7 @@ public:
 	bool isGalaxyInSatellites(galaxy *subgalaxy);
 	vec2 getPosition() const;
 	vec2 getVelocity() const;
-	void telePosition(const vec2 &location);
+	void upgrade();
 	galaxy *destroy();
 	enum class Type
 	{
@@ -68,10 +68,12 @@ public:
 		Alive,
 		Dead
 	} state = State::Alive;
-
+	int life = 2;
+	int futlife=2;
 private:
+
 	vec2 Position;
 	vec2 Velocity;
 	vec2 Accleration;
-	int life = 2;
+
 };

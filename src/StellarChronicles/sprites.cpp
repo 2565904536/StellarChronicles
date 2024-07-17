@@ -12,10 +12,13 @@ sprites::sprites(SDL_Texture *texture, SDL_Point frameSize, Uint32 frameNum,  fl
 
 void sprites::draw(SDL_Renderer *renderer, SDL_Point position,float visScale)
 {
+	if (index == 1)
+		int a = 1;
+
 	int x = index / frameSize.x;
-	int y = index % frameSize.y;
+	int y = index % frameSize.x;
 	SDL_Point center = {size.x / 2, size.y / 2};
-	SDL_Rect srcArea{x * size.x, y * size.y, size.x, size.y};
+	SDL_Rect srcArea{y * size.x, x * size.y, size.x, size.y};
 	auto totalScale = scale * visScale;
 	SDL_Rect dstArea{position.x - center.x * totalScale, position.y - center.y * totalScale, size.x * totalScale, size.y * totalScale };
 	SDL_Point scaledCenter{ center.x * totalScale,center.y *totalScale };

@@ -39,26 +39,26 @@ public:
 		texManager.LoadTex(renderer, "planet0.png", "01");
 		texManager.LoadTex(renderer, "planet1.png", "02");
 		texManager.LoadTex(renderer, "0001.png", "03");
+		texManager.LoadTex(renderer, "texture.png", "04");
 		sprites ÐÐÐÇÌùÍ¼(texManager.GetTex("01"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
 		sprites Ì«ÑôÌùÍ¼(texManager.GetTex("02"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
 		sprites ÔÉÊ¯ÌùÍ¼(texManager.GetTex("03"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		Ì«Ñô = new galaxy{{-3.0f, 0.0f}, 30.0f, 1.0f, Ì«ÑôÌùÍ¼};
-		ÐÐÐÇ = new galaxy{{0.0f, 0.0f}, 2.0f, 0.5f, ÐÐÐÇÌùÍ¼};
-		ÎÀÐÇ = new galaxy{{5.0f, 0.0f}, 0.5f, 0.2f, ÔÉÊ¯ÌùÍ¼};
-		Ì«Ñô->type = galaxy::Type::star;
-		ÐÐÐÇ->type = galaxy::Type::planet;
-		for (int i = 0; i < 500; i++)
+		sprites Texture{ texManager.GetTex("04"),{3,1},3,0.0f,1.0f,SDL_FLIP_NONE };
+		player = new galaxy{ vec2_zero,1.0f,1.0f,Texture };
+		player->isPlayer = true;
+		galaxies.push_back(player);
+		for (int i = 0; i < 1000; i++)
 		{
 			galaxies.push_back(new galaxy{
 				vec2{20.0f + 112.0f * random(gen), 20.0f + 112.0f * random(gen)},
 				0.5f,
 				0.3f + 0.2f * random(gen),
-				ÔÉÊ¯ÌùÍ¼});
+				Texture });
 		}
+
 		// ÐÐÐÇ->Velocity = { 0.0f,1.0f };
 		// ÐÐÐÇ->linkSubGalaxy(ÎÀÐÇ);
-		Ì«Ñô->linkSubGalaxy(ÐÐÐÇ);
-		ÎÀÐÇ->isPlayer = true;
+
 		gameCamera = {vec2_zero, 1.0f, 0.0f};
 		gameCamera.scale = 1.0f;
 	}
@@ -87,7 +87,7 @@ public:
 					debugBreak = true;
 					break;
 				case SDLK_b:
-					Ì«Ñô->removeSubGalaxy(ÐÐÐÇ);
+
 					// ÎÀÐÇ->linkSubGalaxy();
 					break;
 				case SDLK_LEFT:
@@ -130,50 +130,43 @@ public:
 			Torque += 5.0f;
 
 		QuadTree starTree{{gameCamera.position.x, gameCamera.position.y, 1000.0f, 1000.0f}};
-		starTree.insert(*Ì«Ñô);
-		starTree.insert(*ÐÐÐÇ);
-		starTree.insert(*ÎÀÐÇ);
 		for (auto &s : galaxies)
 			if (s->state == galaxy::State::Alive)
 				starTree.insert(*s);
 		auto aroundGalaxies = starTree.query({gameCamera.position.x, gameCamera.position.y, 32.0f / gameCamera.scale, 18.0f / gameCamera.scale});
-		static float time = 1 / 30.0f;
-		ÎÀÐÇ->applyAccleration(force / 5);
-		Ì«Ñô->contactProcess(starTree);
-		ÐÐÐÇ->contactProcess(starTree);
-		ÎÀÐÇ->contactProcess(starTree);
+		static float time = 1 / 60.0f;
+		player->applyAccleration(force);
 		for (auto &s : galaxies)
 			s->contactProcess(starTree);
-		Ì«Ñô->gravitationProcess(starTree);
-		ÐÐÐÇ->gravitationProcess(starTree);
-		ÎÀÐÇ->gravitationProcess(starTree);
+		for (auto& s : galaxies)
+			std::swap(s->life, s->futlife);
+
 		for (auto &s : galaxies)
 			s->gravitationProcess(starTree);
 
-		Ì«Ñô->PhysicStep(time);
-		ÐÐÐÇ->PhysicStep(time);
-		ÎÀÐÇ->PhysicStep(time);
+		for (auto &s : aroundGalaxies)
+		{
+			switch (s->type)
+			{
+			case galaxy::Type::asiderite:
+				if(s->life>20)
+					s->upgrade();
+				break;
+			case galaxy::Type::planet:
+				if(s->life>250)
+					s->upgrade();
+				break;
+			case galaxy::Type::star:
+				break;
+			default:
+				break;
+			}
+		}
+
 		for (auto &s : galaxies)
 			s->PhysicStep(time);
 
-		switch (cameraindex)
-		{
-		case 0:
-			gameCamera.position = vec2_zero;
-			break;
-		case 1:
-			gameCamera.position = Ì«Ñô->getPosition();
-			break;
-		case 2:
-			gameCamera.position = ÐÐÐÇ->getPosition();
-			break;
-		case 3:
-			gameCamera.position = ÎÀÐÇ->getPosition();
-			break;
-		default:
-			cameraindex = 0;
-			break;
-		}
+		gameCamera.position = player->getPosition();
 		for (auto &s : aroundGalaxies)
 			if (s->state == galaxy::State::Dead)
 			{
@@ -185,11 +178,7 @@ public:
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);
 
-		Ì«Ñô->draw(renderer, gameCamera);
 
-		ÐÐÐÇ->draw(renderer, gameCamera);
-
-		ÎÀÐÇ->draw(renderer, gameCamera);
 		for (auto &s : aroundGalaxies)
 			s->draw(renderer, gameCamera);
 		// SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
@@ -205,19 +194,14 @@ public:
 
 	manager texManager;
 	camera gameCamera;
-	galaxy *Ì«Ñô;
-	galaxy *ÐÐÐÇ;
-	galaxy *ÎÀÐÇ;
 	std::vector<galaxy *> galaxies;
+	galaxy* player;
 	objectPool pool;
 	Uint64 lastTime;
 
 	bool loop = false;
 	~gameInstance()
 	{
-		delete ÐÐÐÇ;
-		delete Ì«Ñô;
-		delete ÎÀÐÇ;
 		for (auto &s : galaxies)
 			delete s;
 	}
