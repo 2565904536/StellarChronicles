@@ -1,5 +1,6 @@
 #pragma once
 #include "SDL2/SDL_image.h"
+#include "SDL2/SDL_mixer.h"
 #include <map>
 #include <string_view>
 #include "StellarChronicles/stella.h"
@@ -20,9 +21,12 @@ public:
 	// todo:
 	SDL_Texture *GetFontTex(char ch);
 
+	bool loadWAV(std::string_view Path, std::string_view name);
+	Mix_Chunk* getMusic(std::string_view name);
+
 private:
 	std::map<std::string_view, SDL_Texture *> textures;
-
+	std::map<std::string_view, Mix_Chunk*> musics;
 	// 我不希望字符材质能被直接访问,所以预存的材质存储在这
 	// todo:
 };

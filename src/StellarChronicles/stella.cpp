@@ -9,6 +9,8 @@ galaxy::galaxy(vec2 position, float mass, float radius, sprites &sprite)
 
 void galaxy::PhysicStep(float time)
 {
+	if (state != State::Alive&&!isPlayer)
+		return;
 	if (!owner)
 	{
 		Velocity += Accleration * time;
@@ -36,6 +38,8 @@ void galaxy::PhysicStep(float time)
 		isUpdated = false;
 		orbitAngAcc = 0.0f;
 	}
+	iscontact = false;
+	islink = false;
 }
 
 void galaxy::linkSubGalaxy(galaxy *subGalaxy)
@@ -53,6 +57,7 @@ void galaxy::linkSubGalaxy(galaxy *subGalaxy)
 		subGalaxy->orbitAngVel = vel.length() / subGalaxy->orbitRadius;
 	else
 		subGalaxy->orbitAngVel = -vel.length() / subGalaxy->orbitRadius;
+	islink = true;
 }
 
 void galaxy::removeSubGalaxy(galaxy *subGalaxy)
@@ -133,20 +138,22 @@ void galaxy::draw(SDL_Renderer *renderer, camera &camera)
 	sprite.draw(renderer, pos2, camera.scale);
 }
 
-void galaxy::contactProcess(QuadTree &tree)
+void galaxy::contactProcess(std::vector<galaxy *> &aroundGalaxies)
 {
 	if (state != State::Alive)
 		return;
 	// 得到周围的galaxies
-	auto arroundGalaxies = tree.query({Position.x, Position.y, 2 * mainStar.radius, 2 * mainStar.radius});
-	for (auto &s : arroundGalaxies)
+
+	for (auto &s : aroundGalaxies)
 	{
 		// 不和自己碰撞
-		if (s == this || s->state == State::Destroyed)
+		if (s == this || s->state != State::Alive)
 			continue;
 		// 仔细判断碰撞
 		auto pos = s->Position - Position;
 		auto le = pos.length();
+		if (le > 2 * mainStar.radius + s->mainStar.radius)
+			continue;
 		auto d = le - (s->mainStar.radius + mainStar.radius);
 		if (d > 0)
 			continue;
@@ -155,10 +162,10 @@ void galaxy::contactProcess(QuadTree &tree)
 		auto dvlen = dv.length();
 		auto &m1 = mainStar.mass;
 		auto &m2 = s->mainStar.mass;
-		auto &&e = 0.5;
+		auto &&e = 1.0f;
 		auto imp = dv * (m1 * m2 / (m1 + m2) * (1 + e));
+		applyDisplace(pos * (m2 * d *1.01f/ (m1 + m2) / le));
 		applyImpulse(imp);
-		applyDisplace(pos * (m2 * d / (m1 + m2) / le));
 		futlife = life;
 		switch (type)
 		{
@@ -166,7 +173,7 @@ void galaxy::contactProcess(QuadTree &tree)
 			switch (s->type)
 			{
 			case galaxy::Type::asiderite:
-				if (dvlen > 2.0f)
+				if (true)
 				{
 					if (isPlayer)
 					{
@@ -237,46 +244,88 @@ void galaxy::contactProcess(QuadTree &tree)
 		default:
 			break;
 		}
+	iscontact = true;
 	}
-	if (isPlayer)
-		std::print("life={} futlife={} \n", life, futlife);
 
 }
 
-void galaxy::gravitationProcess(QuadTree &tree)
+void galaxy::gravitationProcess(std::vector<galaxy *> &aroundGalaxies)
 {
 	if (state != State::Alive)
 		return;
-	auto arroundGalaxies = tree.query({Position.x, Position.y, 10 * mainStar.radius, 10 * mainStar.radius});
-	for (auto &s : arroundGalaxies)
+
+	for (auto &s : aroundGalaxies)
 	{
-		if (s == this ||  s->type == Type::asiderite|| s->state != State::Alive || isGalaxyInSatellites(s))
+		auto pos = s->Position - Position;
+		auto d = pos.lengthSqure();
+		if (d > 100 * mainStar.radius * mainStar.radius)
+			continue;
+		if (s == this ||   s->type == Type::asiderite|| s->state != State::Alive || isGalaxyInSatellites(s))
+			continue;
+
+		applyAccleration(pos * (0.1 * s->mainStar.mass / d));
+	}
+}
+
+void galaxy::linkProcess(std::vector<galaxy *> &aroundGalaxies)
+{
+	if (state != State::Alive)
+		return;
+	for (auto &s : aroundGalaxies)
+	{
+		if (s == this || s->state != State::Alive)
 			continue;
 		auto pos = s->Position - Position;
 		auto d = pos.lengthSqure();
-		applyAccleration(pos * (0.1 * s->mainStar.mass / d));
+		if (d > 100 * mainStar.radius * mainStar.radius||satellites.size()>10)
+			continue;
+		if (s->isPlayer)
+			continue;
+		switch (this->type)
+		{
+		case Type::asiderite:
+
+			break;
+		case Type::planet:
+			if (s->type == Type::asiderite)
+			{
+				auto vel = s->getVelocity() - getVelocity();
+				auto vellen = vel.length();
+				if (d > 4.0f * mainStar.radius * mainStar.radius && vellen < 4.0f)
+					linkSubGalaxy(s);
+			}
+			break;
+		case Type::star:
+			if (s->type == Type::planet)
+			{
+				auto vel = s->getVelocity() - getVelocity();
+				auto vellen = vel.length();
+				if (d > 4.0f * mainStar.radius * mainStar.radius && vellen < 4.0f)
+					linkSubGalaxy(s);
+			}
+			break;
+		default:
+			break;
+		}
 	}
 }
 
 bool galaxy::isGalaxyInSatellites(galaxy *subgalaxy)
 {
-	// 首先检查当前galaxy的直接卫星
-	if (std::find(satellites.begin(), satellites.end(), subgalaxy) != satellites.end())
+	if (!subgalaxy)
+		return false;
+	// 检查subgalaxy是否是当前星系的直接或间接子星系
+	galaxy *currentOwner = subgalaxy->owner;
+	while (currentOwner != nullptr)
 	{
-		return true; // 如果找到了，直接返回true
-	}
-
-	// 如果当前galaxy没有直接卫星，或者subgalaxy不是直接卫星之一
-	// 则递归检查所有直接卫星
-	for (auto &s : satellites)
-	{
-		if (s->isGalaxyInSatellites(subgalaxy))
+		if (currentOwner == this)
 		{
-			return true; // 如果任一直接卫星包含subgalaxy，则返回true
+			return true; // 找到了，subgalaxy是当前星系的子星系
 		}
+		currentOwner = currentOwner->owner; // 继续向上查找父星系
 	}
 
-	// 如果没有任何直接卫星包含subgalaxy，则返回false
+	// 没有找到，subgalaxy不是当前星系的子星系
 	return false;
 }
 
@@ -303,7 +352,7 @@ void galaxy::upgrade()
 		life = 100;
 		mainStar.mass = 10.0f;
 		mainStar.radius = 4.0f;
-		mainStar.sprite.scale *= 4.0f;
+		mainStar.sprite.scale = mainStar.radius * 100 / mainStar.sprite.size.x;
 		mainStar.sprite.nextFrame();
 		break;
 	case galaxy::Type::planet:
@@ -311,7 +360,7 @@ void galaxy::upgrade()
 		life = 1000;
 		mainStar.mass = 100.0f;
 		mainStar.radius = 15.0f;
-		mainStar.sprite.scale *= 15.0f / 4.0f;
+		mainStar.sprite.scale = mainStar.radius * 100 / mainStar.sprite.size.x;
 		mainStar.sprite.nextFrame();
 		break;
 	case galaxy::Type::star:
@@ -319,6 +368,16 @@ void galaxy::upgrade()
 	default:
 		break;
 	}
+}
+
+void galaxy::absorb()
+{
+	if (satellites.empty())
+		return;
+	auto s = satellites.front();
+	futlife += s->life;
+	s->futlife = 0;
+	s->state = State::Dead;
 }
 
 galaxy *galaxy::destroy()
@@ -331,7 +390,14 @@ galaxy *galaxy::destroy()
 	Position = vec2{0.0f, 0.0f};
 	Velocity = vec2{0.0f, 0.0f};
 	life = 0;
+	iscontact = false;
+	islink = false;
 	return this;
+}
+
+void galaxy::tp(vec2 position)
+{
+	Position = position;
 }
 
 stella::stella(float mass, float radius, sprites &sprite, galaxy *owner)

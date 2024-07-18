@@ -2,6 +2,7 @@
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
 #include "SDL2/SDL_ttf.h"
+#include "SDL2/SDL_mixer.h"
 #include "StellarChronicles/game.h"
 #include "StellarChronicles/sprites.h"
 #include "StellarChronicles/manager.h"
@@ -27,6 +28,7 @@ Uint64 frequency = SDL_GetPerformanceFrequency();
 std::random_device rd;
 std::mt19937 gen(rd());
 std::uniform_real_distribution<float> random(0.0f, 1.0f);
+Uint64 gameTime = 0;
 class gameInstance : public game
 {
 public:
@@ -35,23 +37,23 @@ public:
 	void INIT()
 	{
 		lastTime = SDL_GetPerformanceCounter();
+		texManager.LoadTex(renderer, "texture.png", "00");
+		texManager.LoadTex(renderer, "background.png", "01");
+		texManager.loadWAV("absorb.wav", "absorb");
+		texManager.loadWAV("contact.wav", "contact");
+		texManager.loadWAV("destroy.wav", "destroy");
+		texManager.loadWAV("link.wav", "link");
+		font = TTF_OpenFont("consola.ttf", 72);
 
-		texManager.LoadTex(renderer, "planet0.png", "01");
-		texManager.LoadTex(renderer, "planet1.png", "02");
-		texManager.LoadTex(renderer, "0001.png", "03");
-		texManager.LoadTex(renderer, "texture.png", "04");
-		sprites –––«Ã˘Õº(texManager.GetTex("01"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		sprites Ã´—ÙÃ˘Õº(texManager.GetTex("02"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		sprites ‘… ØÃ˘Õº(texManager.GetTex("03"), {1, 1}, 1, 0.0f, 1.0f, SDL_FLIP_NONE);
-		sprites Texture{ texManager.GetTex("04"),{3,1},3,0.0f,1.0f,SDL_FLIP_NONE };
+		sprites Texture{ texManager.GetTex("00"),{3,1},3,0.0f,1.0f,SDL_FLIP_NONE };
 		player = new galaxy{ vec2_zero,1.0f,1.0f,Texture };
 		player->isPlayer = true;
 		galaxies.push_back(player);
 		for (int i = 0; i < 1000; i++)
 		{
 			galaxies.push_back(new galaxy{
-				vec2{20.0f + 112.0f * random(gen), 20.0f + 112.0f * random(gen)},
-				0.5f,
+				vec2{-100.0f+ 200.0f * random(gen), -100.0f+ 200.0f * random(gen)},
+				1.0f,
 				0.3f + 0.2f * random(gen),
 				Texture });
 		}
@@ -81,7 +83,13 @@ public:
 				switch (windowEvent.key.keysym.sym)
 				{
 				case SDLK_ESCAPE:
-					loop = false;
+					if (gameState == gameState::game)
+						gameState = gameState::Pause;
+					else {
+						gameState = gameState::game;
+						if (player->state == galaxy::State::Destroyed)
+							loop = false;
+					}
 					break;
 				case SDLK_KP_0:
 					debugBreak = true;
@@ -113,7 +121,7 @@ public:
 
 		auto keyboardState = SDL_GetKeyboardState(NULL);
 		vec2 force = vec2_zero;
-		float Torque = 0.0f;
+		bool absorb =false;
 		if (keyboardState[SDL_SCANCODE_A])
 		{
 			force += {-5.0f, 0.0f};
@@ -124,80 +132,134 @@ public:
 			force += {5.0f, 0.0f};
 		if (keyboardState[SDL_SCANCODE_W])
 			force += {0.0f, -5.0f};
-		if (keyboardState[SDL_SCANCODE_Q])
-			Torque += -5.0f;
-		if (keyboardState[SDL_SCANCODE_E])
-			Torque += 5.0f;
+		if (keyboardState[SDL_SCANCODE_SPACE])
+			absorb = true;
+
 
 		QuadTree starTree{{gameCamera.position.x, gameCamera.position.y, 1000.0f, 1000.0f}};
 		for (auto &s : galaxies)
 			if (s->state == galaxy::State::Alive)
 				starTree.insert(*s);
-		auto aroundGalaxies = starTree.query({gameCamera.position.x, gameCamera.position.y, 32.0f / gameCamera.scale, 18.0f / gameCamera.scale});
-		static float time = 1 / 60.0f;
-		player->applyAccleration(force);
-		for (auto &s : galaxies)
-			s->contactProcess(starTree);
-		for (auto& s : galaxies)
-			std::swap(s->life, s->futlife);
-
-		for (auto &s : galaxies)
-			s->gravitationProcess(starTree);
-
-		for (auto &s : aroundGalaxies)
+		auto aroundGalaxies = starTree.query({ gameCamera.position.x, gameCamera.position.y, 32.0f / gameCamera.scale, 18.0f / gameCamera.scale });
+		float time = 1/fps;
+		if(gameState==gameState::game)
 		{
-			switch (s->type)
+
+			player->applyAccleration(force);
+			if (absorb)
 			{
-			case galaxy::Type::asiderite:
-				if(s->life>20)
-					s->upgrade();
-				break;
-			case galaxy::Type::planet:
-				if(s->life>250)
-					s->upgrade();
-				break;
-			case galaxy::Type::star:
-				break;
-			default:
-				break;
+				player->absorb();
+				Mix_PlayChannel(-1, texManager.getMusic("absorb"), 0);
 			}
+
+			for (auto& s : galaxies)
+			{
+				auto stars = starTree.query({ s->getPosition().x,s->getPosition().y,10 * s->mainStar.radius,10 * s->mainStar.radius });
+				s->contactProcess(stars);
+				s->linkProcess(stars);
+				s->gravitationProcess(stars);
+				if (s->iscontact)
+				{
+					Mix_PlayChannel(-1, texManager.getMusic("contact"), 0);
+					s->iscontact = false;
+				}
+
+				if (s->islink)
+					Mix_PlayChannel(-1, texManager.getMusic("link"), 0);
+			}
+
+			for (auto& s : galaxies)
+				std::swap(s->life, s->futlife);
+
+			for (auto& s : aroundGalaxies)
+			{
+				switch (s->type)
+				{
+				case galaxy::Type::asiderite:
+					if (s->life > 20)
+					{
+						s->upgrade();
+						if (s->isPlayer)
+							score += 1000;
+					}
+					break;
+				case galaxy::Type::planet:
+					if (s->life > 250)
+					{
+						s->upgrade();
+						if (s->isPlayer)
+							score += 5000;
+					}
+					break;
+				case galaxy::Type::star:
+					break;
+				default:
+					break;
+				}
+			}
+
+			for (auto& s : galaxies)
+				s->PhysicStep(time);
+				if (player->getVelocity().lengthSqure() > 10.0f&&pool.pool.size()>30)
+				{
+					auto newGalaxy = pool.getObj();
+					newGalaxy->type = galaxy::Type::asiderite;
+					newGalaxy->state = galaxy::State::Alive;
+					newGalaxy->life = 2;
+					newGalaxy->tp(vec2{ -100.0f + 200.0f * random(gen), -100.0f + 200.0f * random(gen) } + player->getPosition());
+				}
+
+
+			gameCamera.position = player->getPosition();
+			for (auto& s : aroundGalaxies)
+				if (s->state == galaxy::State::Dead)
+				{
+					s->destroy();
+					Mix_PlayChannel(-1, texManager.getMusic("destroy"), 0);
+					pool += s;
+				}
+			//gameTime += time;
+			score +=time * 10;
+			
 		}
-
-		for (auto &s : galaxies)
-			s->PhysicStep(time);
-
-		gameCamera.position = player->getPosition();
-		for (auto &s : aroundGalaxies)
-			if (s->state == galaxy::State::Dead)
-			{
-				s->destroy();
-				pool += s;
-			}
-
+		SDL_Surface* scorePrint = TTF_RenderText_Blended(font, std::format("score: {:.0f}", score).c_str(), { 0xFF,0x00,0xFF,0xFF });
+		SDL_Texture* scoreTexture = SDL_CreateTextureFromSurface(renderer, scorePrint);
+		SDL_FreeSurface(scorePrint);
 		// «Âø’∆¡ƒª
 		SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0xFF);
 		SDL_RenderClear(renderer);
-
+		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		SDL_RenderCopy(renderer, texManager.GetTex("01"), nullptr, nullptr);
 
 		for (auto &s : aroundGalaxies)
-			s->draw(renderer, gameCamera);
-		// SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		// SDL_RenderDrawLine(renderer, 0, 540, 1920, 540);
-		// SDL_RenderDrawLine(renderer, 960, 0, 960, 1080);
+			if (s->state == galaxy::State::Alive) [[likely]]
+			{
+				s->draw(renderer, gameCamera);
+			}
+		SDL_Rect scoreDest{ 0,0,256,64 };
+		SDL_RenderCopy(renderer, scoreTexture, nullptr, &scoreDest);
 		//  œ‘ æ‰÷»æƒ⁄»›
 		SDL_RenderPresent(renderer);
 		std::print("\rfps:{:.4f}", fps);
+		SDL_DestroyTexture(scoreTexture);
 		// ∞¥–°º¸≈Ã0÷–∂œ≥Ã–Ú
 		if (debugBreak)
 			debugBreak = false;
 	}
 
 	manager texManager;
+	TTF_Font* font;
 	camera gameCamera;
 	std::vector<galaxy *> galaxies;
 	galaxy* player;
 	objectPool pool;
 	Uint64 lastTime;
+	float score = 0.0;
+	enum class gameState
+	{
+		Pause,
+		game
+	} gameState = gameState::Pause;
 
 	bool loop = false;
 	~gameInstance()
@@ -215,6 +277,8 @@ int main(int argc, char *argv[])
 	IMG_Init(IMG_INIT_PNG);
 	// ≥ı ºªØ◊÷ÃÂ
 	TTF_Init();
+	Mix_Init(MIX_INIT_MP3);
+	Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
 	gameInstance stellarChronicles("Hello Stellar Chroicles", 100, 100, 1920, 1080, 0);
 
 	std::println("hello world");

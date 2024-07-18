@@ -4,7 +4,6 @@
 #include <vector>
 
 class galaxy;
-class QuadTree;
 class stella
 {
 public:
@@ -28,7 +27,6 @@ class galaxy
 public:
 	galaxy(vec2 position, float mass, float radius, sprites &sprite);
 	friend class QuadTree;
-	// ��Ϊ����ϵ������
 	galaxy *owner = nullptr;
 	float orbitRadius = 0.0f;
 	float orbitAng = 0.0f;
@@ -48,12 +46,14 @@ public:
 	void applyDisplace(const vec2 &disp);
 	void update();
 	void draw(SDL_Renderer *renderer, camera &camera);
-	void contactProcess(QuadTree &tree);
-	void gravitationProcess(QuadTree &tree);
+	void contactProcess(std::vector<galaxy*> &aroundGalaxies);
+	void gravitationProcess(std::vector<galaxy*>& aroundGalaxies);
+	void linkProcess(std::vector<galaxy*>& aroundGalaxies);
 	bool isGalaxyInSatellites(galaxy *subgalaxy);
 	vec2 getPosition() const;
 	vec2 getVelocity() const;
 	void upgrade();
+	void absorb();
 	galaxy *destroy();
 	enum class Type
 	{
@@ -62,6 +62,9 @@ public:
 		star
 	} type = Type::asiderite;
 	bool isPlayer = false;
+	bool iscontact = false;
+	bool islink = false;
+	void tp(vec2 position);
 	enum class State
 	{
 		Destroyed,
